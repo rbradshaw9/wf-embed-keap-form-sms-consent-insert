@@ -592,12 +592,12 @@
                 
                 <div class="tab-content active" id="wf-embed">
                     <div class="code-output" id="wfEmbedCode"></div>
-                    <button class="copy-btn" onclick="copyToClipboard('wfEmbedCode')">📋 Copy Code</button>
+                    <button class="copy-btn" onclick="copyToClipboard('wfEmbedCode', this)">📋 Copy Code</button>
                 </div>
                 
                 <div class="tab-content" id="keap-form">
                     <div class="code-output" id="keapFormCode"></div>
-                    <button class="copy-btn" onclick="copyToClipboard('keapFormCode')">📋 Copy Code</button>
+                    <button class="copy-btn" onclick="copyToClipboard('keapFormCode', this)">📋 Copy Code</button>
                 </div>
             </div>
         </div>
@@ -741,20 +741,25 @@
             document.getElementById(tabName).classList.add('active');
         }
 
-        function copyToClipboard(elementId) {
+        function copyToClipboard(elementId, buttonElement) {
             const element = document.getElementById(elementId);
             const text = element.textContent;
             
+            // If buttonElement is not passed, try to find it via event (fallback for older calls)
+            const btn = buttonElement || event?.target;
+            
             navigator.clipboard.writeText(text).then(() => {
-                const btn = event.target;
-                const originalText = btn.textContent;
-                btn.textContent = '✅ Copied!';
-                btn.style.background = '#48bb78';
-                
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                    btn.style.background = '';
-                }, 2000);
+                if (btn) {
+                    const originalText = btn.textContent;
+                    btn.textContent = '✅ Copied!';
+                    btn.style.background = '#48bb78';
+                    
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.style.background = '';
+                    }, 2000);
+                }
+                debugLog('✅ Successfully copied to clipboard');
             }).catch(err => {
                 debugLog('❌ Copy failed: ' + err.message);
                 showAlert('Failed to copy to clipboard', 'error');
