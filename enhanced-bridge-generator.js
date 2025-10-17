@@ -393,6 +393,9 @@ document.addEventListener('DOMContentLoaded', function () {
     msclkid: utils.getUrlParam('msclkid'),
     ttclid: utils.getUrlParam('ttclid'),
     
+    // WebinarFuel tracking
+    _wf_cid: utils.getUrlParam('_wf_cid'),
+    
     // Additional tracking
     referrer: document.referrer || window.location.href,
     timestamp: new Date().toISOString(),
@@ -569,8 +572,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (hasPhone && !hasConsent) {
                   const originalPhone = payload.viewer.phone;
                   payload.viewer.phone = "";
-                  debug('� WEBINARFUEL: Phone redacted (no SMS consent) -', originalPhone, '-> (empty)');
-                  debug('� KEAP: Will still receive phone + consent status');
+                  debug('📵 WEBINARFUEL: Phone redacted (no SMS consent) -', originalPhone, '-> (empty)');
+                  debug('📋 KEAP: Will still receive phone + consent status');
                   init = { ...init, body: JSON.stringify(payload) };
                 } else if (hasPhone && hasConsent) {
                   debug('✅ WEBINARFUEL: Phone included (SMS consent given)');
@@ -826,6 +829,60 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Setup fetch interception
     setupFetchInterception(consentCheckbox);
+
+    // ========== WEBINARFUEL CID HANDLING ==========
+    // Ensure WebinarFuel gets the _wf_cid parameter for confirmation pages
+    if (trackingData._wf_cid) {
+      debug('🎯 WebinarFuel CID detected:', trackingData._wf_cid);
+      
+      // Ensure WebinarFuel's _wf global receives the CID
+      try {
+        // Initialize _wf array if it doesn't exist
+        if (!window._wf) {
+          window._wf = [];
+        }
+        
+        // Find existing config for this target ID
+        const existingConfigIndex = window._wf.findIndex(config => 
+          config && config.id === '${config.wfTargetId}'
+        );
+        
+        if (existingConfigIndex >= 0) {
+          // Update existing config with CID
+          window._wf[existingConfigIndex].cid = trackingData._wf_cid;
+          debug('✅ Updated existing WebinarFuel config with CID');
+        } else {
+          // Add new config with CID
+          window._wf.push({ 
+            id: '${config.wfTargetId}', 
+            cid: trackingData._wf_cid 
+          });
+          debug('✅ Added new WebinarFuel config with CID');
+        }
+        
+        // Also set data attributes on WebinarFuel target elements
+        const wfTargets = utils.qsa(\`[class*="wf_target_${config.wfTargetId}"], [class*="wf_target"]\`);
+        wfTargets.forEach(target => {
+          target.setAttribute('data-wf-cid', trackingData._wf_cid);
+          debug('✅ Set data-wf-cid attribute on target element');
+        });
+        
+        // Force WebinarFuel to reinitialize if it's already loaded
+        if (window.WF && typeof window.WF.refresh === 'function') {
+          setTimeout(() => {
+            window.WF.refresh();
+            debug('✅ Refreshed WebinarFuel with new CID');
+          }, 100);
+        }
+        
+        debugSuccess('🎯 WebinarFuel CID handling complete:', trackingData._wf_cid);
+        
+      } catch (error) {
+        debugError('⚠️ Error setting WebinarFuel CID:', error);
+      }
+    } else {
+      debug('ℹ️ No WebinarFuel CID in URL parameters - this is normal for registration pages');
+    }
 
     // Enhanced button click handler
     button.addEventListener('click', async function(event) {
