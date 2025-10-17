@@ -841,20 +841,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // FINAL VERIFICATION: Check consent field state right before submission
         let finalConsentCheck = null;
-        let consentFieldName = 'unknown';
+        let finalConsentFieldName = 'unknown';
         
         if (CONFIG.consentFieldInfo) {
           finalConsentCheck = utils.qs(\`#\${CONFIG.consentFieldInfo.id}\`) || 
                              utils.qs(\`[name="\${CONFIG.consentFieldInfo.name}"]\`);
-          consentFieldName = CONFIG.consentFieldInfo.name;
+          finalConsentFieldName = CONFIG.consentFieldInfo.name;
         } else {
           finalConsentCheck = utils.qs(\`#\${CONFIG.keapConsentFieldId}\`);
-          consentFieldName = CONFIG.keapConsentFieldId;
+          finalConsentFieldName = CONFIG.keapConsentFieldId;
         }
         
         debug('🔍 FINAL CHECK before submission:', {
           reason: reason,
-          fieldName: consentFieldName,
+          fieldName: finalConsentFieldName,
           consentFieldExists: !!finalConsentCheck,
           consentFieldChecked: finalConsentCheck ? finalConsentCheck.checked : 'N/A',
           consentFieldValue: finalConsentCheck ? finalConsentCheck.value : 'N/A',
