@@ -643,13 +643,33 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       });
 
-      // Set SMS consent in Keap form
+      // Set SMS consent in Keap form with enhanced debugging
       const keapConsentField = utils.qs(\`#\${CONFIG.keapConsentFieldId}\`);
       if (keapConsentField) {
+        debug('📋 BEFORE setting Keap consent field:', {
+          fieldId: CONFIG.keapConsentFieldId,
+          currentValue: keapConsentField.checked,
+          willSetTo: consentChecked
+        });
+        
         keapConsentField.checked = consentChecked;
-        debug('Keap consent field set:', consentChecked);
+        
+        debug('📋 AFTER setting Keap consent field:', {
+          fieldId: CONFIG.keapConsentFieldId,
+          actualValue: keapConsentField.checked,
+          expectedValue: consentChecked,
+          success: keapConsentField.checked === consentChecked
+        });
+        
+        // Double-check by re-querying the field
+        const verifyField = utils.qs(\`#\${CONFIG.keapConsentFieldId}\`);
+        debug('📋 VERIFICATION: Re-queried Keap consent field:', {
+          exists: !!verifyField,
+          checked: verifyField ? verifyField.checked : 'N/A'
+        });
       } else {
-        debug('Keap consent field not found:', CONFIG.keapConsentFieldId);
+        debugError('📋 Keap consent field not found:', CONFIG.keapConsentFieldId);
+        debugError('📋 Available checkboxes in form:', Array.from(utils.qsa('input[type="checkbox"]')).map(cb => cb.id || cb.name));
       }
 
       // Populate only the tracking fields that exist in this Keap form
@@ -916,9 +936,21 @@ document.addEventListener('DOMContentLoaded', function () {
         isTrusted: event.isTrusted
       });
       
-      // Check SMS consent first
+      // Check SMS consent first - with enhanced debugging
       const consentChecked = consentCheckbox && consentCheckbox.checked;
       debug('📱 SMS consent status:', consentChecked);
+      
+      // Double-check the actual DOM element state
+      if (consentCheckbox) {
+        debug('📱 Consent element details:', {
+          id: consentCheckbox.id,
+          checked: consentCheckbox.checked,
+          value: consentCheckbox.value,
+          type: consentCheckbox.type
+        });
+      } else {
+        debugError('📱 Consent checkbox element not found!');
+      }
       
       // Capture original phone for processing
       const originalPhone = phoneField ? phoneField.value.trim() : '';
