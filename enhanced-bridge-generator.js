@@ -698,6 +698,11 @@ document.addEventListener('DOMContentLoaded', function () {
           if (consentChecked) {
             // When checked, ensure the field has the correct value for submission
             keapConsentField.value = CONFIG.consentFieldInfo.value;
+            // Also ensure the DOM property is set (some browsers need this)
+            keapConsentField.setAttribute('checked', 'checked');
+          } else {
+            // When unchecked, remove the checked attribute entirely
+            keapConsentField.removeAttribute('checked');
           }
           
           debug('📋 AFTER setting Keap consent field:', {
@@ -860,6 +865,23 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
           const formData = new FormData(keapForm);
           
+          // 🔧 CRITICAL FIX: Manually ensure consent field is included if checked
+          let consentFieldName = '';
+          let expectedConsentValue = '';
+          
+          if (CONFIG.consentFieldInfo && consentChecked) {
+            consentFieldName = CONFIG.consentFieldInfo.name;
+            expectedConsentValue = CONFIG.consentFieldInfo.value;
+            
+            // Check if FormData already includes the consent field
+            if (!formData.has(consentFieldName)) {
+              debug('⚠️ CONSENT FIELD MISSING FROM FORMDATA - manually adding it');
+              formData.append(consentFieldName, expectedConsentValue);
+            } else {
+              debug('✅ Consent field already in FormData:', formData.get(consentFieldName));
+            }
+          }
+          
           // Log what's actually being submitted
           const formDataEntries = {};
           for (const [key, value] of formData.entries()) {
@@ -886,7 +908,10 @@ document.addEventListener('DOMContentLoaded', function () {
             valueType: typeof consentFieldInFormData,
             isUndefined: consentFieldInFormData === undefined,
             isEmpty: consentFieldInFormData === '',
-            expectedWhenChecked: CONFIG.consentFieldInfo ? CONFIG.consentFieldInfo.value : 'unknown'
+            expectedWhenChecked: CONFIG.consentFieldInfo ? CONFIG.consentFieldInfo.value : 'unknown',
+            consentWasChecked: consentChecked,
+            shouldHaveValue: consentChecked && CONFIG.consentFieldInfo,
+            fixApplied: consentChecked && !consentFieldInFormData ? 'YES - manually added' : 'NO - not needed'
           });
           
           // Check if there are any other consent-related fields in the form
