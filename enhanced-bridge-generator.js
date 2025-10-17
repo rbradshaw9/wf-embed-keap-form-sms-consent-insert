@@ -867,6 +867,47 @@ document.addEventListener('DOMContentLoaded', function () {
           }
           debug('📤 ACTUAL FORM DATA being submitted:', formDataEntries);
           
+          // 🔍 ENHANCED CONSENT DEBUGGING - Show exact field name and value being sent
+          let consentFieldInFormData = null;
+          let consentFieldName = 'unknown';
+          
+          if (CONFIG.consentFieldInfo) {
+            consentFieldName = CONFIG.consentFieldInfo.name;
+            consentFieldInFormData = formDataEntries[CONFIG.consentFieldInfo.name];
+          } else if (CONFIG.keapConsentFieldId) {
+            consentFieldName = CONFIG.keapConsentFieldId;
+            consentFieldInFormData = formDataEntries[CONFIG.keapConsentFieldId];
+          }
+          
+          debug('🚨 CONSENT FIELD ANALYSIS:', {
+            configInfo: CONFIG.consentFieldInfo,
+            fieldName: consentFieldName,
+            valueInFormData: consentFieldInFormData,
+            valueType: typeof consentFieldInFormData,
+            isUndefined: consentFieldInFormData === undefined,
+            isEmpty: consentFieldInFormData === '',
+            expectedWhenChecked: CONFIG.consentFieldInfo ? CONFIG.consentFieldInfo.value : 'unknown'
+          });
+          
+          // Check if there are any other consent-related fields in the form
+          const allConsentFields = Object.keys(formDataEntries).filter(key => 
+            key.toLowerCase().includes('consent') ||
+            key.toLowerCase().includes('sms') ||
+            key.toLowerCase().includes('text') ||
+            key.toLowerCase().includes('message') ||
+            key.toLowerCase().includes('agree') ||
+            key.includes('inf_option_')
+          );
+          
+          if (allConsentFields.length > 0) {
+            debug('🔍 ALL CONSENT-RELATED FIELDS IN FORM DATA:', 
+              allConsentFields.reduce((obj, key) => {
+                obj[key] = formDataEntries[key];
+                return obj;
+              }, {})
+            );
+          }
+          
           // Method 1: sendBeacon (most reliable)
           if (navigator.sendBeacon) {
             const params = new URLSearchParams();
