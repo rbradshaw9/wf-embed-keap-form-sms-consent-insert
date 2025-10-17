@@ -69,10 +69,41 @@ class WFKeapBridgeGenerator {
       }
     }
 
-    // Extract consent checkbox ID (the long one)
-    const consentMatch = keapCode.match(/id="(inf_option_[^"]+)"/);
-    if (consentMatch) {
-      config.keapConsentFieldId = consentMatch[1];
+    // Extract SMS consent field information - more comprehensive approach
+    // Look for checkbox inputs that likely relate to SMS/text messaging consent
+    const consentPatterns = [
+      // Pattern 1: inf_option_ fields (most common)
+      /(<input[^>]*id="(inf_option_[^"]*)"[^>]*>)/i,
+      // Pattern 2: Other consent checkbox patterns
+      /(<input[^>]*name="([^"]*(?:consent|sms|text|message)[^"]*)"[^>]*type="checkbox"[^>]*>)/i,
+      /(<input[^>]*type="checkbox"[^>]*name="([^"]*(?:consent|sms|text|message)[^"]*)"[^>]*>)/i
+    ];
+
+    let consentFieldInfo = null;
+    for (const pattern of consentPatterns) {
+      const match = keapCode.match(pattern);
+      if (match) {
+        const fullTag = match[1];
+        const fieldId = match[2];
+        
+        // Extract additional attributes from the full input tag
+        const nameMatch = fullTag.match(/name="([^"]*)"/);
+        const valueMatch = fullTag.match(/value="([^"]*)"/);
+        const typeMatch = fullTag.match(/type="([^"]*)"/);
+        
+        consentFieldInfo = {
+          id: fieldId,
+          name: nameMatch ? nameMatch[1] : fieldId,
+          value: valueMatch ? valueMatch[1] : 'on',
+          type: typeMatch ? typeMatch[1] : 'checkbox',
+          fullTag: fullTag
+        };
+        
+        // Set the main field ID for backward compatibility 
+        config.keapConsentFieldId = fieldId;
+        config.consentFieldInfo = consentFieldInfo;
+        break;
+      }
     }
 
     // Extract consent text from label
@@ -119,6 +150,7 @@ class WFKeapBridgeGenerator {
       wfTargetId: wfConfig.wfTargetId || wfConfig.wfId || '',
       keapFormId: keapConfig.keapFormId || '',
       keapConsentFieldId: keapConfig.keapConsentFieldId || '',
+      consentFieldInfo: keapConfig.consentFieldInfo || null,
       keapSubdomain: keapConfig.keapSubdomain || '',
       keapActionUrl: keapConfig.keapActionUrl || '',
       wfButtonSelector: userConfig.wfButtonSelector || null, // Dynamic detection
@@ -643,33 +675,71 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       });
 
-      // Set SMS consent in Keap form with enhanced debugging
-      const keapConsentField = utils.qs(\`#\${CONFIG.keapConsentFieldId}\`);
-      if (keapConsentField) {
-        debug('📋 BEFORE setting Keap consent field:', {
-          fieldId: CONFIG.keapConsentFieldId,
-          currentValue: keapConsentField.checked,
-          willSetTo: consentChecked
-        });
-        
-        keapConsentField.checked = consentChecked;
-        
-        debug('📋 AFTER setting Keap consent field:', {
-          fieldId: CONFIG.keapConsentFieldId,
-          actualValue: keapConsentField.checked,
-          expectedValue: consentChecked,
-          success: keapConsentField.checked === consentChecked
-        });
-        
-        // Double-check by re-querying the field
-        const verifyField = utils.qs(\`#\${CONFIG.keapConsentFieldId}\`);
-        debug('📋 VERIFICATION: Re-queried Keap consent field:', {
-          exists: !!verifyField,
-          checked: verifyField ? verifyField.checked : 'N/A'
-        });
+      // Set SMS consent in Keap form with enhanced debugging using dynamic field info
+      let keapConsentField = null;
+      
+      if (CONFIG.consentFieldInfo) {
+        // Try to find by ID first, then by name
+        keapConsentField = utils.qs(\`#\${CONFIG.consentFieldInfo.id}\`) || 
+                          utils.qs(\`[name="\${CONFIG.consentFieldInfo.name}"]\`);
+                          
+        if (keapConsentField) {
+          debug('📋 BEFORE setting Keap consent field:', {
+            fieldId: CONFIG.consentFieldInfo.id,
+            fieldName: CONFIG.consentFieldInfo.name,
+            fieldValue: CONFIG.consentFieldInfo.value,
+            currentChecked: keapConsentField.checked,
+            currentValue: keapConsentField.value,
+            willSetTo: consentChecked
+          });
+          
+          // Set both checked state AND proper value for form submission
+          keapConsentField.checked = consentChecked;
+          if (consentChecked) {
+            // When checked, ensure the field has the correct value for submission
+            keapConsentField.value = CONFIG.consentFieldInfo.value;
+          }
+          
+          debug('📋 AFTER setting Keap consent field:', {
+            fieldId: CONFIG.consentFieldInfo.id,
+            fieldName: CONFIG.consentFieldInfo.name,
+            actualChecked: keapConsentField.checked,
+            actualValue: keapConsentField.value,
+            expectedChecked: consentChecked,
+            expectedValue: CONFIG.consentFieldInfo.value,
+            success: keapConsentField.checked === consentChecked
+          });
+          
+          // Double-check by re-querying the field
+          const verifyField = utils.qs(\`#\${CONFIG.consentFieldInfo.id}\`) || 
+                             utils.qs(\`[name="\${CONFIG.consentFieldInfo.name}"]\`);
+          debug('📋 VERIFICATION: Re-queried Keap consent field:', {
+            exists: !!verifyField,
+            checked: verifyField ? verifyField.checked : 'N/A',
+            value: verifyField ? verifyField.value : 'N/A',
+            name: verifyField ? verifyField.name : 'N/A'
+          });
+        } else {
+          debugError('📋 Keap consent field not found using dynamic info:', CONFIG.consentFieldInfo);
+        }
       } else {
-        debugError('📋 Keap consent field not found:', CONFIG.keapConsentFieldId);
-        debugError('📋 Available checkboxes in form:', Array.from(utils.qsa('input[type="checkbox"]')).map(cb => cb.id || cb.name));
+        // Fallback to old method
+        keapConsentField = utils.qs(\`#\${CONFIG.keapConsentFieldId}\`);
+        if (keapConsentField) {
+          keapConsentField.checked = consentChecked;
+          debug('📋 Used fallback method to set consent field');
+        } else {
+          debugError('📋 Keap consent field not found:', CONFIG.keapConsentFieldId);
+        }
+      }
+      
+      if (!keapConsentField) {
+        debugError('📋 Available checkboxes in form:', Array.from(utils.qsa('input[type="checkbox"]')).map(cb => ({
+          id: cb.id,
+          name: cb.name,
+          value: cb.value,
+          type: cb.type
+        })));
       }
 
       // Populate only the tracking fields that exist in this Keap form
@@ -765,12 +835,25 @@ document.addEventListener('DOMContentLoaded', function () {
         debug(\`Sending backup submission due to: \${reason}\`);
 
         // FINAL VERIFICATION: Check consent field state right before submission
-        const finalConsentCheck = utils.qs(\`#\${CONFIG.keapConsentFieldId}\`);
+        let finalConsentCheck = null;
+        let consentFieldName = 'unknown';
+        
+        if (CONFIG.consentFieldInfo) {
+          finalConsentCheck = utils.qs(\`#\${CONFIG.consentFieldInfo.id}\`) || 
+                             utils.qs(\`[name="\${CONFIG.consentFieldInfo.name}"]\`);
+          consentFieldName = CONFIG.consentFieldInfo.name;
+        } else {
+          finalConsentCheck = utils.qs(\`#\${CONFIG.keapConsentFieldId}\`);
+          consentFieldName = CONFIG.keapConsentFieldId;
+        }
+        
         debug('🔍 FINAL CHECK before submission:', {
           reason: reason,
+          fieldName: consentFieldName,
           consentFieldExists: !!finalConsentCheck,
           consentFieldChecked: finalConsentCheck ? finalConsentCheck.checked : 'N/A',
-          expectedValue: consentChecked,
+          consentFieldValue: finalConsentCheck ? finalConsentCheck.value : 'N/A',
+          expectedChecked: consentChecked,
           matchesExpected: finalConsentCheck ? (finalConsentCheck.checked === consentChecked) : false
         });
 
