@@ -891,19 +891,19 @@ document.addEventListener('DOMContentLoaded', function () {
           
           // 🔍 ENHANCED CONSENT DEBUGGING - Show exact field name and value being sent
           let consentFieldInFormData = null;
-          let consentFieldName = 'unknown';
+          let debugConsentFieldName = 'unknown';
           
           if (CONFIG.consentFieldInfo) {
-            consentFieldName = CONFIG.consentFieldInfo.name;
+            debugConsentFieldName = CONFIG.consentFieldInfo.name;
             consentFieldInFormData = formDataEntries[CONFIG.consentFieldInfo.name];
           } else if (CONFIG.keapConsentFieldId) {
-            consentFieldName = CONFIG.keapConsentFieldId;
+            debugConsentFieldName = CONFIG.keapConsentFieldId;
             consentFieldInFormData = formDataEntries[CONFIG.keapConsentFieldId];
           }
           
           debug('🚨 CONSENT FIELD ANALYSIS:', {
             configInfo: CONFIG.consentFieldInfo,
-            fieldName: consentFieldName,
+            fieldName: debugConsentFieldName,
             valueInFormData: consentFieldInFormData,
             valueType: typeof consentFieldInFormData,
             isUndefined: consentFieldInFormData === undefined,
