@@ -1,36 +1,15 @@
 {
-  "version": 2,
   "name": "webinarfuel-keap-bridge",
-  "builds": [
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
     {
-      "src": "**/*.html", 
-      "use": "@vercel/static"
+      "source": "/debug",
+      "destination": "/debug-test.html"
     },
     {
-      "src": "**/*.js",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "**/*.css",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/debug",
-      "dest": "/debug-test.html"
-    },
-    {
-      "src": "/dom-fix",
-      "dest": "/dom-fix-test.html"  
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
+      "source": "/dom-fix",
+      "destination": "/dom-fix-test.html"
     }
   ],
   "headers": [
