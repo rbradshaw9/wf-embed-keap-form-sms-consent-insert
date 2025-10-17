@@ -1,5 +1,7 @@
 {
   "name": "webinarfuel-keap-bridge",
+  "buildCommand": "echo 'Static files ready - no build needed'",
+  "outputDirectory": ".",
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
