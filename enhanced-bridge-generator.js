@@ -764,8 +764,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
         debug(\`Sending backup submission due to: \${reason}\`);
 
+        // FINAL VERIFICATION: Check consent field state right before submission
+        const finalConsentCheck = utils.qs(\`#\${CONFIG.keapConsentFieldId}\`);
+        debug('🔍 FINAL CHECK before submission:', {
+          reason: reason,
+          consentFieldExists: !!finalConsentCheck,
+          consentFieldChecked: finalConsentCheck ? finalConsentCheck.checked : 'N/A',
+          expectedValue: consentChecked,
+          matchesExpected: finalConsentCheck ? (finalConsentCheck.checked === consentChecked) : false
+        });
+
         try {
           const formData = new FormData(keapForm);
+          
+          // Log what's actually being submitted
+          const formDataEntries = {};
+          for (const [key, value] of formData.entries()) {
+            formDataEntries[key] = value;
+          }
+          debug('📤 ACTUAL FORM DATA being submitted:', formDataEntries);
           
           // Method 1: sendBeacon (most reliable)
           if (navigator.sendBeacon) {
