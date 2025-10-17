@@ -365,6 +365,132 @@
             cursor: pointer;
             margin-bottom: 20px;
         }
+
+        .config-header {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .config-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .config-name-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .config-name-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .config-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background: white;
+            min-width: 250px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            border-radius: 8px;
+            z-index: 1000;
+            border: 1px solid #e2e8f0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .dropdown-content.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #f7fafc;
+            transition: background 0.2s;
+        }
+
+        .dropdown-item:hover {
+            background: #f7fafc;
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .config-meta {
+            font-size: 12px;
+            color: #718096;
+            margin-top: 4px;
+        }
+
+        .config-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .btn-mini {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-edit {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-delete-mini {
+            background: #f56565;
+            color: white;
+        }
+
+        .config-status {
+            font-size: 14px;
+            font-weight: 600;
+            color: #718096;
+        }
+
+        .status-new {
+            color: #ed8936;
+        }
+
+        .status-saved {
+            color: #48bb78;
+        }
     </style>
 </head>
 <body>
@@ -383,6 +509,21 @@
                 <button class="debug-toggle" onclick="toggleDebug()">🐛 Toggle Debug Panel</button>
                 
                 <div class="debug-panel" id="debugPanel"></div>
+
+                <!-- Configuration Management -->
+                <div class="config-header">
+                    <div class="config-row">
+                        <input type="text" id="configName" class="config-name-input" placeholder="Enter configuration name..." onchange="updateConfigStatus()">
+                        <div class="config-dropdown">
+                            <button class="dropdown-btn" onclick="toggleDropdown()">
+                                📂 Load Saved <span id="dropdownArrow">▼</span>
+                            </button>
+                            <div class="dropdown-content" id="configDropdown"></div>
+                        </div>
+                        <button type="button" class="btn-save" onclick="saveConfiguration()">💾 Save</button>
+                    </div>
+                    <div class="config-status" id="configStatus">💡 Enter a name and start building your integration</div>
+                </div>
 
                 <form id="bridgeForm">
                     <!-- Step 1: WebinarFuel Code -->
@@ -426,15 +567,7 @@
                         </div>
                     </div>
 
-                    <!-- Save/Load Section -->
-                    <div class="save-section">
-                        <h3 style="margin-bottom: 15px;">💾 Save & Load Configurations</h3>
-                        <div class="save-controls">
-                            <input type="text" id="configName" class="save-input" placeholder="Enter configuration name...">
-                            <button type="button" class="btn-save" onclick="saveConfiguration()">Save</button>
-                        </div>
-                        <div id="savedConfigs"></div>
-                    </div>
+
                 </form>
             </div>
 
@@ -487,8 +620,7 @@
                 showAlert('Failed to initialize generator: ' + error.message, 'error');
             }
             
-            displaySavedConfigs();
-            debugLog('📋 Saved configurations loaded');
+            debugLog('📋 Configuration system initialized');
         }
 
         // Debug logging
@@ -644,7 +776,68 @@
             setTimeout(() => alert.remove(), 5000);
         }
 
-        // Save/Load Functions
+        // Configuration Management Functions
+        let currentDropdownOpen = false;
+
+        function updateConfigStatus() {
+            const name = document.getElementById('configName').value.trim();
+            const status = document.getElementById('configStatus');
+            
+            if (!name) {
+                status.textContent = '💡 Enter a name and start building your integration';
+                status.className = 'config-status';
+                return;
+            }
+            
+            const savedConfigs = JSON.parse(localStorage.getItem('wf_bridge_configs') || '[]');
+            const existing = savedConfigs.find(c => c.name === name);
+            
+            if (existing) {
+                status.textContent = `📁 Editing saved configuration: ${name}`;
+                status.className = 'config-status status-saved';
+            } else {
+                status.textContent = `✨ New configuration: ${name}`;
+                status.className = 'config-status status-new';
+            }
+        }
+
+        function toggleDropdown() {
+            const dropdown = document.getElementById('configDropdown');
+            const arrow = document.getElementById('dropdownArrow');
+            
+            if (currentDropdownOpen) {
+                dropdown.classList.remove('show');
+                arrow.textContent = '▼';
+                currentDropdownOpen = false;
+            } else {
+                populateDropdown();
+                dropdown.classList.add('show');
+                arrow.textContent = '▲';
+                currentDropdownOpen = true;
+            }
+        }
+
+        function populateDropdown() {
+            const savedConfigs = JSON.parse(localStorage.getItem('wf_bridge_configs') || '[]');
+            const dropdown = document.getElementById('configDropdown');
+            
+            if (savedConfigs.length === 0) {
+                dropdown.innerHTML = '<div class="dropdown-item" style="color: #718096; font-style: italic;">No saved configurations</div>';
+                return;
+            }
+            
+            dropdown.innerHTML = savedConfigs.map(config => `
+                <div class="dropdown-item">
+                    <div style="font-weight: 600;">${config.name}</div>
+                    <div class="config-meta">Saved: ${new Date(config.savedAt).toLocaleDateString()}</div>
+                    <div class="config-actions">
+                        <button class="btn-mini btn-edit" onclick="event.stopPropagation(); loadConfiguration('${config.name}'); toggleDropdown();">Edit</button>
+                        <button class="btn-mini btn-delete-mini" onclick="event.stopPropagation(); deleteConfiguration('${config.name}');">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
         function saveConfiguration() {
             const name = document.getElementById('configName').value.trim();
             if (!name) {
@@ -663,18 +856,15 @@
             
             const existingIndex = savedConfigs.findIndex(c => c.name === name);
             if (existingIndex >= 0) {
-                if (!confirm(`Configuration "${name}" already exists. Overwrite?`)) {
-                    return;
-                }
                 savedConfigs[existingIndex] = config;
+                showAlert(`Configuration "${name}" updated successfully!`, 'success');
             } else {
                 savedConfigs.push(config);
+                showAlert(`Configuration "${name}" saved successfully!`, 'success');
             }
 
             localStorage.setItem('wf_bridge_configs', JSON.stringify(savedConfigs));
-            document.getElementById('configName').value = '';
-            displaySavedConfigs();
-            showAlert(`Configuration "${name}" saved successfully!`, 'success');
+            updateConfigStatus();
             debugLog('💾 Configuration saved: ' + name);
         }
 
@@ -683,8 +873,16 @@
             const config = savedConfigs.find(c => c.name === name);
             
             if (config) {
-                document.getElementById('wfCode').value = config.wfCode || '';
-                document.getElementById('keapCode').value = config.keapCode || '';
+                // Prevent form clearing by setting values directly without triggering events
+                const wfCodeEl = document.getElementById('wfCode');
+                const keapCodeEl = document.getElementById('keapCode');
+                const configNameEl = document.getElementById('configName');
+                
+                wfCodeEl.value = config.wfCode || '';
+                keapCodeEl.value = config.keapCode || '';
+                configNameEl.value = config.name;
+                
+                updateConfigStatus();
                 showAlert(`Configuration "${name}" loaded successfully!`, 'success');
                 debugLog('📂 Configuration loaded: ' + name);
             }
@@ -698,33 +896,29 @@
             let savedConfigs = JSON.parse(localStorage.getItem('wf_bridge_configs') || '[]');
             savedConfigs = savedConfigs.filter(c => c.name !== name);
             localStorage.setItem('wf_bridge_configs', JSON.stringify(savedConfigs));
-            displaySavedConfigs();
+            
+            // If we're currently editing the deleted config, clear the name
+            if (document.getElementById('configName').value === name) {
+                document.getElementById('configName').value = '';
+                updateConfigStatus();
+            }
+            
+            populateDropdown();
             showAlert(`Configuration "${name}" deleted successfully!`, 'success');
             debugLog('🗑️ Configuration deleted: ' + name);
         }
 
-        function displaySavedConfigs() {
-            const savedConfigs = JSON.parse(localStorage.getItem('wf_bridge_configs') || '[]');
-            const container = document.getElementById('savedConfigs');
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('configDropdown');
+            const dropdownBtn = event.target.closest('.dropdown-btn');
             
-            if (savedConfigs.length === 0) {
-                container.innerHTML = '<p style="color: #718096; font-style: italic;">No saved configurations</p>';
-                return;
+            if (!dropdownBtn && !dropdown.contains(event.target)) {
+                if (currentDropdownOpen) {
+                    toggleDropdown();
+                }
             }
-
-            container.innerHTML = savedConfigs.map(config => `
-                <div class="saved-config">
-                    <div>
-                        <div class="config-name">${config.name}</div>
-                        <div style="font-size: 12px; color: #718096;">Saved: ${new Date(config.savedAt).toLocaleDateString()}</div>
-                    </div>
-                    <div class="config-actions">
-                        <button class="btn-small btn-load" onclick="loadConfiguration('${config.name}')">Load</button>
-                        <button class="btn-small btn-delete" onclick="deleteConfiguration('${config.name}')">Delete</button>
-                    </div>
-                </div>
-            `).join('');
-        }
+        });
 
         // Example data loaders
         function loadWFExample() {

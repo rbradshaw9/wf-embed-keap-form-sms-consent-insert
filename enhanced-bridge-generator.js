@@ -456,7 +456,7 @@ document.addEventListener('DOMContentLoaded', function () {
     consentWrapper.id = 'wf_sms_consent_wrap';
     consentWrapper.style.cssText = \`
       margin: 0;
-      padding: 0 0 10px 0;
+      padding: 0 16px 16px 16px;
       font-family: Montserrat, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       font-size: 13px;
       color: #333;
