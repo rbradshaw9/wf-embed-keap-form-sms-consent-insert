@@ -157,6 +157,54 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
+        .saved-config {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .saved-config-name {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .saved-config-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-load {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-load:hover {
+            background: #38a169;
+        }
+
+        .btn-delete {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #e53e3e;
+        }
+
         .results {
             margin-top: 40px;
             display: none;
@@ -465,14 +513,22 @@
                 </div>
 
                 <!-- Generate Button -->
+                                <!-- Save/Load Section -->
+                <div class="step">
+                    <label class="label">💾 Save Configuration (Optional)</label>
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <input type="text" id="configName" placeholder="Enter a name for this configuration..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                        <button type="button" onclick="saveConfiguration()" class="btn-secondary">Save</button>
+                    </div>
+                    
+                    <div id="savedConfigs" style="margin-bottom: 15px;"></div>
+                </div>
+
+                <!-- Generate Button -->
                 <div class="step">
                     <button type="submit" class="btn">
-                        <span>🚀</span>
-                        Generate Bridge Code
+                        🚀 Generate Bridge Code
                     </button>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progressFill"></div>
-                    </div>
                 </div>
             </form>
 
@@ -741,6 +797,97 @@
             
             document.getElementById('keapCode').value = keapExample;
         }
+
+        // Save/Load Configuration Functions
+        function saveConfiguration() {
+            const name = document.getElementById('configName').value.trim();
+            if (!name) {
+                alert('Please enter a name for this configuration');
+                return;
+            }
+
+            const config = {
+                name: name,
+                wfCode: document.getElementById('wfCode').value,
+                keapCode: document.getElementById('keapCode').value,
+                companyName: document.getElementById('companyName').value,
+                consentText: document.getElementById('consentText').value,
+                buttonSelector: document.getElementById('buttonSelector').value,
+                savedAt: new Date().toISOString()
+            };
+
+            let savedConfigs = JSON.parse(localStorage.getItem('wf_bridge_configs') || '[]');
+            
+            // Check if name already exists
+            const existingIndex = savedConfigs.findIndex(c => c.name === name);
+            if (existingIndex >= 0) {
+                if (!confirm(`Configuration "${name}" already exists. Overwrite?`)) {
+                    return;
+                }
+                savedConfigs[existingIndex] = config;
+            } else {
+                savedConfigs.push(config);
+            }
+
+            localStorage.setItem('wf_bridge_configs', JSON.stringify(savedConfigs));
+            document.getElementById('configName').value = '';
+            displaySavedConfigs();
+            showAlert(`Configuration "${name}" saved successfully!`, 'success');
+        }
+
+        function loadConfiguration(name) {
+            const savedConfigs = JSON.parse(localStorage.getItem('wf_bridge_configs') || '[]');
+            const config = savedConfigs.find(c => c.name === name);
+            
+            if (config) {
+                document.getElementById('wfCode').value = config.wfCode || '';
+                document.getElementById('keapCode').value = config.keapCode || '';
+                document.getElementById('companyName').value = config.companyName || '';
+                document.getElementById('consentText').value = config.consentText || '';
+                document.getElementById('buttonSelector').value = config.buttonSelector || '';
+                showAlert(`Configuration "${name}" loaded successfully!`, 'success');
+            }
+        }
+
+        function deleteConfiguration(name) {
+            if (!confirm(`Delete configuration "${name}"? This cannot be undone.`)) {
+                return;
+            }
+
+            let savedConfigs = JSON.parse(localStorage.getItem('wf_bridge_configs') || '[]');
+            savedConfigs = savedConfigs.filter(c => c.name !== name);
+            localStorage.setItem('wf_bridge_configs', JSON.stringify(savedConfigs));
+            displaySavedConfigs();
+            showAlert(`Configuration "${name}" deleted successfully!`, 'success');
+        }
+
+        function displaySavedConfigs() {
+            const savedConfigs = JSON.parse(localStorage.getItem('wf_bridge_configs') || '[]');
+            const container = document.getElementById('savedConfigs');
+            
+            if (savedConfigs.length === 0) {
+                container.innerHTML = '<p style="color: #718096; font-style: italic; font-size: 14px;">No saved configurations</p>';
+                return;
+            }
+
+            container.innerHTML = savedConfigs.map(config => `
+                <div class="saved-config">
+                    <div>
+                        <div class="saved-config-name">${config.name}</div>
+                        <div style="font-size: 12px; color: #718096;">Saved: ${new Date(config.savedAt).toLocaleDateString()}</div>
+                    </div>
+                    <div class="saved-config-actions">
+                        <button class="btn-small btn-load" onclick="loadConfiguration('${config.name}')">Load</button>
+                        <button class="btn-small btn-delete" onclick="deleteConfiguration('${config.name}')">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Initialize saved configs display on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            displaySavedConfigs();
+        });
     </script>
 </body>
 </html>
