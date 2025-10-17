@@ -91,10 +91,20 @@ class WFKeapBridgeGenerator {
       }
     }
 
-    // Extract form name for tracking
-    const formNameMatch = keapCode.match(/name="inf_form_name"[^>]*value="([^"]+)"/);
+        // Extract form name for tracking
+    const formNameMatch = keapCode.match(/name="inf_form_name"[^>]*value="([^"]+)"/);;
     if (formNameMatch) {
       config.formName = formNameMatch[1];
+    }
+
+    // Extract existing custom tracking fields
+    const customFieldMatches = keapCode.match(/name="(inf_custom_[^"]+)"/g);
+    config.existingCustomFields = [];
+    if (customFieldMatches) {
+      config.existingCustomFields = customFieldMatches.map(match => {
+        const fieldMatch = match.match(/name="([^"]+)"/);
+        return fieldMatch ? fieldMatch[1] : null;
+      }).filter(Boolean);
     }
 
     console.log('Parsed Keap config:', config);
@@ -115,6 +125,7 @@ class WFKeapBridgeGenerator {
       consentText: keapConfig.consentText || 'By checking this box, I agree to receive text messages.',
       companyName: keapConfig.companyName || 'Our Company',
       formName: keapConfig.formName || 'Web Form',
+      existingCustomFields: keapConfig.existingCustomFields || [],
       maxRetries: userConfig.maxRetries || 3,
       timeoutMs: userConfig.timeoutMs || 1000,
       ...userConfig
@@ -641,8 +652,8 @@ document.addEventListener('DOMContentLoaded', function () {
         debug('Keap consent field not found:', CONFIG.keapConsentFieldId);
       }
 
-      // Populate ALL tracking fields comprehensively
-      const trackingFields = {
+      // Populate only the tracking fields that exist in this Keap form
+      const allTrackingData = {
         'inf_custom_GaSource': trackingData.utm_source,
         'inf_custom_GaMedium': trackingData.utm_medium,
         'inf_custom_GaCampaign': trackingData.utm_campaign,
@@ -659,9 +670,20 @@ document.addEventListener('DOMContentLoaded', function () {
         'inf_custom_Timestamp': trackingData.timestamp
       };
 
-      Object.entries(trackingFields).forEach(([fieldName, value]) => {
-        utils.setHiddenField(fieldName, value || 'null');
+      // Only set fields that actually exist in the Keap form
+      const existingFields = ${JSON.stringify(config.existingCustomFields || [])};
+      existingFields.forEach(fieldName => {
+        const value = allTrackingData[fieldName];
+        if (value !== undefined) {
+          utils.setHiddenField(fieldName, value || 'null');
+        } else {
+          debug('No tracking data for field:', fieldName);
+          utils.setHiddenField(fieldName, 'null');
+        }
       });
+      
+      debug('Available custom fields in form:', existingFields);
+      debug('Populated tracking fields:', existingFields.length);
 
       // Enhanced submission tracking
       let submitted = false;
