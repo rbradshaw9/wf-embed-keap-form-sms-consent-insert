@@ -485,21 +485,22 @@
                         <span class="step-number">3</span>
                         <span class="step-title">Optional Configuration</span>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="timeout">Submission Timeout (ms):</label>
-                            <input type="number" id="timeout" name="timeout" value="1000" min="500" max="5000">
-                            <div class="help-text">How long to wait for form submission confirmation</div>
-                        </div>
-                        <div class="form-group">
-                            <label for="maxRetries">Max Retries:</label>
-                            <input type="number" id="maxRetries" name="maxRetries" value="3" min="1" max="10">
-                            <div class="help-text">Maximum number of submission retry attempts</div>
-                        </div>
-                    </div>
+                    
                     <div class="form-group">
-                        <label for="customButtonSelector">Custom Button Selector (optional):</label>
-                        <input type="text" id="customButtonSelector" name="customButtonSelector" placeholder="#wf_element_123456 button">
+                        <label for="companyName">Company Name (for SMS consent text):</label>
+                        <input type="text" id="companyName" name="companyName" placeholder="Your Company Name">
+                        <div class="help-text">Used in the SMS consent text. Will auto-detect from Keap form if not provided.</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="consentText">Custom SMS Consent Text (optional):</label>
+                        <textarea id="consentText" name="consentText" rows="3" placeholder="By checking this box, I agree to receive text messages..."></textarea>
+                        <div class="help-text">Leave blank to use auto-generated compliance text</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="buttonSelector">Custom Button Selector (optional):</label>
+                        <input type="text" id="buttonSelector" name="buttonSelector" placeholder="#wf_element_123456 button">
                         <div class="help-text">Override button selector if auto-detection fails</div>
                     </div>
                     
@@ -635,11 +636,11 @@
             try {
                 // Build user config
                 const userConfig = {
-                    timeoutMs: parseInt(formData.get('timeout')) || 1000,
-                    maxRetries: parseInt(formData.get('maxRetries')) || 3
+                    companyName: formData.get('companyName') || '',
+                    consentText: formData.get('consentText') || ''
                 };
 
-                const customButtonSelector = formData.get('customButtonSelector').trim();
+                const customButtonSelector = formData.get('buttonSelector')?.trim();
                 if (customButtonSelector) {
                     userConfig.wfButtonSelector = customButtonSelector;
                 }
