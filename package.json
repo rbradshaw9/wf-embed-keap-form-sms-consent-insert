@@ -1,0 +1,30 @@
+{
+  "name": "webinarfuel-keap-bridge-generator",
+  "version": "2.0.0",
+  "description": "Bulletproof WebinarFuel to Keap/Infusionsoft bridge with SMS consent handling",
+  "main": "enhanced-bridge-generator.js",
+  "scripts": {
+    "start": "node -e \"console.log('Static files ready for deployment')\"",
+    "dev": "python3 -m http.server 8000",
+    "build": "echo 'Static build complete'",
+    "test": "node -e \"const gen = require('./enhanced-bridge-generator.js'); console.log('Generator loaded successfully');\""
+  },
+  "keywords": [
+    "webinarfuel",
+    "keap",
+    "infusionsoft", 
+    "bridge",
+    "sms-consent",
+    "form-integration",
+    "utm-tracking"
+  ],
+  "author": "Ryan Bradshaw",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rbradshaw9/wf-embed-keap-form-sms-consent-insert.git"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebinarFuel ↔ Keap Bridge Generator</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .step {
+            margin-bottom: 40px;
+            padding: 30px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .step:hover {
+            border-color: #667eea;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.1);
+        }
+
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-right: 15px;
+        }
+
+        .step-title {
+            display: inline-block;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #4a5568;
+        }
+
+        textarea, input, select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            transition: border-color 0.3s ease;
+            background: #f7fafc;
+        }
+
+        textarea:focus, input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+        }
+
+        textarea {
+            min-height: 200px;
+            resize: vertical;
+        }
+
+        .code-textarea {
+            min-height: 300px;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .results {
+            margin-top: 40px;
+            display: none;
+        }
+
+        .result-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            font-weight: 600;
+            color: #718096;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .code-output {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 6px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .copy-btn {
+            position: relative;
+            float: right;
+            margin-top: -10px;
+            margin-bottom: 10px;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background: #f0fff4;
+            border: 1px solid #9ae6b4;
+            color: #276749;
+        }
+
+        .tab-header {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 12px;
+            border-left: 5px solid #28a745;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .tab-header h3 {
+            color: #2d3748;
+            font-size: 1.4rem;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tab-header p {
+            color: #4a5568;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .alert-error {
+            background: #fed7d7;
+            border: 1px solid #fc8181;
+            color: #742a2a;
+        }
+
+        .alert-warning {
+            background: #fffbeb;
+            border: 1px solid #f6e05e;
+            color: #744210;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #e2e8f0;
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .help-text {
+            font-size: 14px;
+            color: #718096;
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+
+        .example-btn {
+            margin-left: 10px;
+            padding: 6px 12px;
+            font-size: 12px;
+            background: #e2e8f0;
+            color: #4a5568;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .example-btn:hover {
+            background: #cbd5e0;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 8px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .step {
+                padding: 20px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .result-tabs {
+                flex-wrap: wrap;
+            }
+
+            .tab {
+                flex: 1;
+                min-width: 120px;
+            }
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #718096;
+        }
+
+        .spinner {
+            border: 3px solid #e2e8f0;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>WebinarFuel ↔ Keap Bridge Generator</h1>
+            <p>Create bulletproof integrations with SMS consent handling</p>
+        </div>
+
+        <div class="main-content">
+            <form id="generatorForm">
+                <!-- Step 1: WebinarFuel Code -->
+                <div class="step">
+                    <div class="step-header">
+                        <span class="step-number">1</span>
+                        <span class="step-title">WebinarFuel Embed Code</span>
+                        <button type="button" class="example-btn" onclick="loadWFExample()">Load Example</button>
+                    </div>
+                    <div class="form-group">
+                        <label for="wfCode">Paste your WebinarFuel embed code:</label>
+                        <textarea id="wfCode" name="wfCode" class="code-textarea" placeholder="<!-- Paste your WebinarFuel embed code here -->
+<script src=&quot;https://d3pw37i36t41cq.cloudfront.net/embed_v2.js&quot; async></script>
+<div class=&quot;wf_target wf_target_YOUR_ID&quot;></div>
+<script>
+  window._wf = window._wf || [];
+  _wf.push({ id: 'YOUR_ID' });
+</script>"></textarea>
+                        <div class="help-text">
+                            Just paste the embed code from WebinarFuel. No rendered HTML needed! 
+                            The bridge automatically detects buttons and form fields dynamically.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Keap/Infusionsoft Code -->
+                <div class="step">
+                    <div class="step-header">
+                        <span class="step-number">2</span>
+                        <span class="step-title">Keap/Infusionsoft Form Code</span>
+                        <button type="button" class="example-btn" onclick="loadKeapExample()">Load Example</button>
+                    </div>
+                    <div class="form-group">
+                        <label for="keapCode">Paste your Keap/Infusionsoft form code:</label>
+                        <textarea id="keapCode" name="keapCode" class="code-textarea" placeholder="<!-- Paste your complete Keap form code here -->
+<iframe id=&quot;inf_sink_iframe&quot; name=&quot;inf_sink&quot; style=&quot;display:none&quot; aria-hidden=&quot;true&quot;></iframe>
+
+<div style=&quot;display:none&quot;>
+  <form accept-charset=&quot;UTF-8&quot;
+        action=&quot;https://YOUR_ACCOUNT.infusionsoft.com/app/form/process/YOUR_FORM_ID&quot;
+        class=&quot;infusion-form&quot;
+        id=&quot;inf_form_YOUR_FORM_ID&quot;
+        method=&quot;POST&quot;
+        target=&quot;inf_sink&quot;>
+    <!-- Include all your form fields and consent checkboxes -->
+  </form>
+</div>"></textarea>
+                        <div class="help-text">
+                            Include the complete hidden form with all fields, especially the SMS consent checkbox.
+                            Make sure to include the iframe and all tracking scripts.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Optional Configuration -->
+                <div class="step">
+                    <div class="step-header">
+                        <span class="step-number">3</span>
+                        <span class="step-title">Optional Configuration</span>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="timeout">Submission Timeout (ms):</label>
+                            <input type="number" id="timeout" name="timeout" value="1000" min="500" max="5000">
+                            <div class="help-text">How long to wait for form submission confirmation</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="maxRetries">Max Retries:</label>
+                            <input type="number" id="maxRetries" name="maxRetries" value="3" min="1" max="10">
+                            <div class="help-text">Maximum number of submission retry attempts</div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="customButtonSelector">Custom Button Selector (optional):</label>
+                        <input type="text" id="customButtonSelector" name="customButtonSelector" placeholder="#wf_element_123456 button">
+                        <div class="help-text">Override button selector if auto-detection fails</div>
+                    </div>
+                    
+                    <div class="debug-tip" style="margin-top: 15px; padding: 12px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; font-size: 0.9rem;">
+                        <strong>🐛 Debug Mode:</strong> Add <code>?debug=true</code> to your page URL to enable comprehensive console logging for troubleshooting.
+                    </div>
+                    
+                    <div class="fix-notification" style="margin-top: 10px; padding: 12px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; font-size: 0.9rem; color: #155724;">
+                        <strong>🔧 Latest Fix:</strong> Resolved SMS consent injection DOM error - checkbox will now appear correctly without insertion failures.
+                    </div>
+                </div>
+
+                <!-- Generate Button -->
+                <div class="step">
+                    <button type="submit" class="btn">
+                        <span>🚀</span>
+                        Generate Bridge Code
+                    </button>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Loading State -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Generating your bulletproof bridge code...</p>
+            </div>
+
+            <!-- Results -->
+            <div class="results" id="results">
+                <div class="alert alert-success">
+                    <strong>✅ Success!</strong> Your bridge code is ready! Copy and paste the two code blocks below.
+                </div>
+
+                <div class="result-tabs">
+                    <button class="tab active" onclick="showTab('wf-embed')">📺 WebinarFuel Button</button>
+                    <button class="tab" onclick="showTab('keap-form')">� Custom HTML Block</button>
+                </div>
+
+
+
+                <div class="tab-content active" id="wf-embed">
+                    <div class="tab-header">
+                        <h3>📺 Step 1: WebinarFuel Button</h3>
+                        <p><strong>Paste this where you want the WebinarFuel button to show up</strong></p>
+                    </div>
+                    <button class="copy-btn btn btn-secondary" onclick="copyToClipboard('wf-embed-code')">📋 Copy & Paste Where Button Should Appear</button>
+                    <div class="code-output" id="wf-embed-code"></div>
+                </div>
+
+                <div class="tab-content" id="keap-form">
+                    <div class="tab-header">
+                        <h3>🔧 Step 2: Custom HTML Block</h3>
+                        <p><strong>Paste this in a Custom HTML block at the bottom of the page</strong></p>
+                    </div>
+                    <button class="copy-btn btn btn-secondary" onclick="copyToClipboard('keap-form-code')">📋 Copy & Paste in Custom HTML Block</button>
+                    <div class="code-output" id="keap-form-code"></div>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="step" style="margin-top: 40px;">
+                <div class="step-header">
+                    <span class="step-number">ℹ️</span>
+                    <span class="step-title">Implementation Instructions</span>
+                </div>
+                <div class="help-text">
+                    <p><strong>For complete integration:</strong></p>
+                    <ol style="margin-left: 20px; margin-top: 10px;">
+                        <li>Copy the "Complete HTML" and save it as a new HTML file</li>
+                        <li>Upload to your web server or paste into your page builder</li>
+                        <li>Test the form submission and SMS consent functionality</li>
+                    </ol>
+
+                    <p style="margin-top: 20px;"><strong>For existing pages:</strong></p>
+                    <ol style="margin-left: 20px; margin-top: 10px;">
+                        <li>Place the WebinarFuel embed where you want the form to appear</li>
+                        <li>Place the Keap form code at the end of your &lt;body&gt; tag</li>
+                        <li>Add the bridge script after the Keap form</li>
+                    </ol>
+
+                    <p style="margin-top: 20px;"><strong>Features included:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li>✅ Automatic SMS consent checkbox injection</li>
+                        <li>✅ Phone number redaction when consent not given</li>
+                        <li>✅ UTM parameter tracking</li>
+                        <li>✅ Reliable form submission with backup methods</li>
+                        <li>✅ Form validation and error handling</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="enhanced-bridge-generator.js"></script>
+    <script>
+        // Initialize enhanced generator
+        const generator = new WFKeapBridgeGenerator();
+        let currentResults = null;
+
+        // Form submission handler
+        document.getElementById('generatorForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const wfCode = formData.get('wfCode').trim();
+            const keapCode = formData.get('keapCode').trim();
+            
+            // Validation
+            if (!wfCode) {
+                showAlert('Please enter WebinarFuel embed code', 'error');
+                return;
+            }
+            
+            if (!keapCode) {
+                showAlert('Please enter Keap/Infusionsoft form code', 'error');
+                return;
+            }
+
+            // Show loading
+            showLoading();
+
+            try {
+                // Build user config
+                const userConfig = {
+                    timeoutMs: parseInt(formData.get('timeout')) || 1000,
+                    maxRetries: parseInt(formData.get('maxRetries')) || 3
+                };
+
+                const customButtonSelector = formData.get('customButtonSelector').trim();
+                if (customButtonSelector) {
+                    userConfig.wfButtonSelector = customButtonSelector;
+                }
+
+                // Generate separate code blocks
+                currentResults = generator.generateSeparateBlocks(wfCode, keapCode, userConfig);
+                
+                // Show results
+                displayResults(currentResults);
+                showAlert('Bridge code generated successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Generation error:', error);
+                showAlert('Error generating code: ' + error.message, 'error');
+            }
+
+            hideLoading();
+        });
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            
+            // Animate progress bar
+            const progressFill = document.getElementById('progressFill');
+            progressFill.style.width = '0%';
+            
+            setTimeout(() => progressFill.style.width = '30%', 100);
+            setTimeout(() => progressFill.style.width = '60%', 500);
+            setTimeout(() => progressFill.style.width = '90%', 1000);
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('progressFill').style.width = '100%';
+            
+            setTimeout(() => {
+                document.getElementById('progressFill').style.width = '0%';
+            }, 1000);
+        }
+
+        function displayResults(results) {
+            document.getElementById('wf-embed-code').textContent = results.webinarFuelEmbed;
+            document.getElementById('keap-form-code').textContent = results.keapFormWithScript;
+            
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function showTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Show selected tab
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                btn.style.background = '#48bb78';
+                
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                showAlert('Failed to copy to clipboard', 'error');
+            });
+        }
+
+        function showAlert(message, type) {
+            // Remove existing alerts
+            document.querySelectorAll('.alert').forEach(alert => {
+                if (!alert.classList.contains('results')) {
+                    alert.remove();
+                }
+            });
+
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            const form = document.getElementById('generatorForm');
+            form.parentNode.insertBefore(alert, form);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // Example data loaders
+        function loadWFExample() {
+            const wfExample = '<script src="https://d3pw37i36t41cq.cloudfront.net/embed_v2.js" async><' + '/script>\n' +
+                '<div class="wf_target wf_target_LY6KyvxuWicTQtyH1PEDMpdh"></div>\n' +
+                '<script>\n' +
+                '  window._wf = window._wf || [];\n' +
+                '  _wf.push({ id: "LY6KyvxuWicTQtyH1PEDMpdh" });\n' +
+                '<' + '/script>';
+            
+            document.getElementById('wfCode').value = wfExample;
+        }
+
+        function loadKeapExample() {
+            const keapExample = '<iframe id="inf_sink_iframe" name="inf_sink" style="display:none" aria-hidden="true"></iframe>\n\n' +
+                '<div style="display:none">\n' +
+                '  <form accept-charset="UTF-8"\n' +
+                '        action="https://yv932.infusionsoft.com/app/form/process/2f18e509cdad61f2c980454fd61236d3"\n' +
+                '        class="infusion-form"\n' +
+                '        id="inf_form_2f18e509cdad61f2c980454fd61236d3"\n' +
+                '        method="POST"\n' +
+                '        target="inf_sink">\n' +
+                '    <input name="inf_form_xid" type="hidden" value="2f18e509cdad61f2c980454fd61236d3" />\n' +
+                '    <input name="inf_form_name" type="hidden" value="Income Stacking Web Form" />\n' +
+                '    \n' +
+                '    <div class="infusion-field">\n' +
+                '      <input id="inf_field_FirstName" name="inf_field_FirstName" type="text" />\n' +
+                '    </div>\n' +
+                '    <div class="infusion-field">\n' +
+                '      <input id="inf_field_LastName" name="inf_field_LastName" type="text" />\n' +
+                '    </div>\n' +
+                '    <div class="infusion-field">\n' +
+                '      <input id="inf_field_Email" name="inf_field_Email" type="text" />\n' +
+                '    </div>\n' +
+                '    <div class="infusion-field">\n' +
+                '      <input id="inf_field_Phone1" name="inf_field_Phone1" type="text" />\n' +
+                '    </div>\n\n' +
+                '    <div class="infusion-field">\n' +
+                '      <span class="infusion-checkbox">\n' +
+                '        <input id="inf_option_BycheckingthisboxIagreetoreceivetextmessages"\n' +
+                '               name="inf_option_BycheckingthisboxIagreetoreceivetextmessages"\n' +
+                '               type="checkbox"\n' +
+                '               value="3887" />\n' +
+                '        <label for="inf_option_BycheckingthisboxIagreetoreceivetextmessages">\n' +
+                '          By checking this box, I agree to receive text messages from The Cash Flow Academy.\n' +
+                '        </label>\n' +
+                '      </span>\n' +
+                '    </div>\n\n' +
+                '    <!-- UTM fields -->\n' +
+                '    <input name="inf_custom_GaSource" type="hidden" value="null" />\n' +
+                '    <input name="inf_custom_GaMedium" type="hidden" value="null" />\n' +
+                '    <input name="inf_custom_GaCampaign" type="hidden" value="null" />\n' +
+                '    <input name="inf_custom_fbclid" type="hidden" value="null" />\n' +
+                '  </form>\n' +
+                '</div>';
+            
+            document.getElementById('keapCode').value = keapExample;
+        }
+    </script>
+</body>
+</html>

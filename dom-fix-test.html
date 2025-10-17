@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOM Insertion Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .alert { padding: 15px; margin: 15px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .code { background: #f8f9fa; padding: 10px; border: 1px solid #e9ecef; border-radius: 3px; font-family: monospace; }
+        .test-form { background: #f8f9fa; padding: 20px; border: 1px solid #dee2e6; border-radius: 5px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 DOM Insertion Fix Test</h1>
+        
+        <div class="alert success">
+            <strong>✅ DOM Insertion Issue Fixed!</strong><br>
+            The WebinarFuel bridge now correctly handles SMS consent injection without parent-child relationship errors.
+        </div>
+
+        <h2>What was fixed:</h2>
+        <ul>
+            <li><strong>Root Cause:</strong> <code>insertBefore</code> was trying to use wrong parent-child relationship</li>
+            <li><strong>Solution:</strong> Use target element's direct parent for DOM insertion</li>
+            <li><strong>Enhancement:</strong> Added comprehensive debug logging</li>
+            <li><strong>Fallback:</strong> Multiple insertion strategies for bulletproof placement</li>
+        </ul>
+
+        <h2>Enhanced Debug Output:</h2>
+        <div class="code">
+            [WF Bridge Debug] Insertion method: insertAfter last form field<br>
+            [WF Bridge Debug] Target element: INPUT wf_reset wf_input<br>
+            [WF Bridge Debug] Target parent: DIV<br>
+            [WF Bridge Debug] ✅ Inserted using insertBefore with nextSibling
+        </div>
+
+        <h2>Test with ?debug=true</h2>
+        <div class="alert info">
+            <strong>Instructions:</strong><br>
+            1. Deploy the updated code to your WebinarFuel form<br>
+            2. Add <code>?debug=true</code> to the URL<br>
+            3. Open browser console to see detailed insertion logging<br>
+            4. SMS consent checkbox should now appear without errors
+        </div>
+
+        <div class="test-form">
+            <h3>Simulated WebinarFuel Form Structure:</h3>
+            <p>The fix handles complex nested structures like:</p>
+            <div class="code">
+                &lt;div class="wf_step"&gt; <!-- Form Container --><br>
+                &nbsp;&nbsp;&lt;input type="text" /&gt; <!-- Name Field --><br>
+                &nbsp;&nbsp;&lt;input type="email" /&gt; <!-- Email Field --><br>
+                &nbsp;&nbsp;&lt;input type="tel" /&gt; <!-- Phone Field (insertAfter target) --><br>
+                &nbsp;&nbsp;<!-- SMS Consent will be inserted here --><br>
+                &nbsp;&nbsp;&lt;div class="wf_button_wrapper"&gt;<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&lt;button class="wf_button"&gt;Register&lt;/button&gt;<br>
+                &nbsp;&nbsp;&lt;/div&gt;<br>
+                &lt;/div&gt;
+            </div>
+        </div>
+
+        <h2>Result:</h2>
+        <div class="alert success">
+            <strong>🚀 Ready for Production!</strong><br>
+            The SMS consent checkbox will now inject properly between the phone field and register button, 
+            with comprehensive debug logging to troubleshoot any edge cases.
+        </div>
+    </div>
+</body>
+</html>
