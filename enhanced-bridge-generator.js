@@ -1026,10 +1026,39 @@ document.addEventListener('DOMContentLoaded', function () {
         cleanup();
       }, CONFIG.timeoutMs * 3);
 
-      // 🔧 CRITICAL FIX: Actually submit the form immediately
-      // The sendBackup method with sendBeacon/fetch will handle the submission
-      debug('🚀 Triggering immediate Keap submission...');
-      sendBackup('immediate-submission');
+      // 🔧 SIMPLIFIED APPROACH: Use native form submission like the working example
+      // Set the form target to the hidden iframe to prevent navigation
+      if (keapFrame) {
+        keapForm.target = 'inf_sink';
+        debug('✅ Set form target to iframe: inf_sink');
+      }
+      
+      // Setup success detection via iframe load
+      if (keapFrame) {
+        const onFrameLoad = () => {
+          markSuccess('iframe-native-submit');
+          cleanup();
+        };
+        keapFrame.addEventListener('load', onFrameLoad, { once: true });
+      }
+      
+      // Use native browser form submission
+      debug('🚀 Triggering native form.submit() to iframe target...');
+      try {
+        keapForm.submit();
+        debug('✅ Form.submit() called - waiting for iframe load confirmation');
+        
+        // Still keep sendBackup as safety net if iframe doesn't load
+        setTimeout(() => {
+          if (!acknowledged && !submitted) {
+            debug('⚠️ Iframe didn\'t load after 2s - triggering backup submission');
+            sendBackup('iframe-load-timeout');
+          }
+        }, 2000);
+      } catch (error) {
+        debugError('❌ Form.submit() failed:', error);
+        sendBackup('submit-error-fallback');
+      }
     });
   }
 
