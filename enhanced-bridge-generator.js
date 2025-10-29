@@ -1009,9 +1009,10 @@ document.addEventListener('DOMContentLoaded', function () {
         cleanup();
       }, CONFIG.timeoutMs * 3);
 
-      // Note: Primary form submission removed to prevent double submission
-      // The form data is submitted via fetch/sendBeacon methods above
-      debug('Keap submission handled via fetch/sendBeacon - avoiding duplicate form.submit()');
+      // 🔧 CRITICAL FIX: Actually submit the form immediately
+      // The sendBackup method with sendBeacon/fetch will handle the submission
+      debug('🚀 Triggering immediate Keap submission...');
+      sendBackup('immediate-submission');
     });
   }
 
