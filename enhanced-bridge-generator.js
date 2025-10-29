@@ -514,6 +514,7 @@ document.addEventListener('DOMContentLoaded', function () {
       position: relative;
     \`;
 
+    // Create label element to avoid template literal escaping issues
     consentWrapper.innerHTML = \`
       <input id="wf_sms_consent" 
              type="checkbox" 
@@ -522,9 +523,14 @@ document.addEventListener('DOMContentLoaded', function () {
       <label id="wf_sms_consent_label" 
              for="wf_sms_consent" 
              style="line-height:1.35;cursor:pointer;user-select:none;">
-        \${CONFIG.consentText}
       </label>
     \`;
+    
+    // Set the consent text separately to avoid escaping issues
+    const consentLabel = consentWrapper.querySelector('#wf_sms_consent_label');
+    if (consentLabel) {
+      consentLabel.textContent = CONFIG.consentText;
+    }
 
     // Insert using optimal placement strategy
     debug('💾 Inserting consent wrapper into DOM...');
