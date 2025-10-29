@@ -863,7 +863,24 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         try {
-          const formData = new FormData(keapForm);
+          const keapFormData = new FormData(keapForm);
+          
+          // 🔧 CRITICAL FIX: FormData doesn't pick up programmatically-set values
+          // We need to manually override them with the captured values from WebinarFuel
+          const { first, last } = utils.parseName(formData.name || '');
+          
+          // Set/override the core fields with our captured values from WebinarFuel form
+          keapFormData.set('inf_field_FirstName', first);
+          keapFormData.set('inf_field_LastName', last);
+          keapFormData.set('inf_field_Email', formData.email);
+          keapFormData.set('inf_field_Phone1', utils.normalizePhone(formData.phone));
+          
+          debug('🔧 Overriding FormData fields with captured values:', {
+            firstName: first,
+            lastName: last,
+            email: formData.email,
+            phone: formData.phone
+          });
           
           // 🔧 CRITICAL FIX: Manually ensure consent field is included if checked
           let consentFieldName = '';
@@ -874,17 +891,17 @@ document.addEventListener('DOMContentLoaded', function () {
             expectedConsentValue = CONFIG.consentFieldInfo.value;
             
             // Check if FormData already includes the consent field
-            if (!formData.has(consentFieldName)) {
+            if (!keapFormData.has(consentFieldName)) {
               debug('⚠️ CONSENT FIELD MISSING FROM FORMDATA - manually adding it');
-              formData.append(consentFieldName, expectedConsentValue);
+              keapFormData.set(consentFieldName, expectedConsentValue);
             } else {
-              debug('✅ Consent field already in FormData:', formData.get(consentFieldName));
+              debug('✅ Consent field already in FormData:', keapFormData.get(consentFieldName));
             }
           }
           
           // Log what's actually being submitted
           const formDataEntries = {};
-          for (const [key, value] of formData.entries()) {
+          for (const [key, value] of keapFormData.entries()) {
             formDataEntries[key] = value;
           }
           debug('📤 ACTUAL FORM DATA being submitted:', formDataEntries);
@@ -936,7 +953,7 @@ document.addEventListener('DOMContentLoaded', function () {
           // Method 1: sendBeacon (most reliable)
           if (navigator.sendBeacon) {
             const params = new URLSearchParams();
-            for (const [key, value] of formData.entries()) {
+            for (const [key, value] of keapFormData.entries()) {
               params.append(key, value);
             }
             const blob = new Blob([params.toString()], { 
@@ -953,7 +970,7 @@ document.addEventListener('DOMContentLoaded', function () {
           // Method 2: Fetch with keepalive
           fetch(keapForm.action, {
             method: 'POST',
-            body: formData,
+            body: keapFormData,
             mode: 'no-cors',
             keepalive: true,
             credentials: 'same-origin'
