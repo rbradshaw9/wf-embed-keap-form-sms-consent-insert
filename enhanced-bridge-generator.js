@@ -1268,16 +1268,37 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   /**
-   * Clean up Keap code
+   * Clean up Keap code and ensure it's hidden
    */
   cleanupKeapCode(keapCode) {
     let cleanCode = keapCode.trim();
     
+    // Add hidden iframe if not present
     if (!cleanCode.includes('inf_sink_iframe')) {
       cleanCode = `<!-- Keap hidden sink iframe -->
 <iframe id="inf_sink_iframe" name="inf_sink" style="display:none" aria-hidden="true"></iframe>
 
 ` + cleanCode;
+    }
+    
+    // 🔧 CRITICAL: Hide the Keap form by wrapping it in a hidden div
+    // Extract the form ID to ensure we're hiding the right element
+    const formIdMatch = cleanCode.match(/id="(inf_form_[a-f0-9]+)"/);
+    if (formIdMatch) {
+      const formId = formIdMatch[1];
+      // Wrap the form in a hidden container
+      cleanCode = cleanCode.replace(
+        /<form /,
+        `<div id="${formId}_container" style="position:absolute;left:-9999px;visibility:hidden;pointer-events:none;" aria-hidden="true">
+<form `
+      );
+      
+      // Close the wrapper div after the form
+      cleanCode = cleanCode.replace(
+        /<\/form>/,
+        `</form>
+</div>`
+      );
     }
 
     return cleanCode;
