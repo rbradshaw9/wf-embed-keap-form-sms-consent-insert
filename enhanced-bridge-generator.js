@@ -318,30 +318,37 @@ document.addEventListener('DOMContentLoaded', function () {
       
       // Multiple strategies for finding elements
       const strategies = [
-        // Strategy 1: Look for WF-specific classes and patterns
-        () => ({
-          button: utils.qs('.wf_button') || 
-                  utils.qs('button[class*="wf_"]') ||
-                  utils.qs('[class*="wf_element"] button') ||
-                  utils.qs('[id*="wf_element"] button'),
-          nameField: utils.qs('input[name="name"]') || utils.qs('input[type="name"]'),
-          emailField: utils.qs('input[name="email"]') || utils.qs('input[type="email"]'),
-          phoneField: utils.qs('input[name="tel"]') || utils.qs('input[type="tel"]') || utils.qs('input[name="phone"]')
-        }),
-        
-        // Strategy 2: Look within WF target container
+        // Strategy 1: Look within THIS SPECIFIC WF target container (prevents conflicts with multiple embeds)
         () => {
-          const wfContainer = utils.qs(\`.wf_target_\${CONFIG.wfTargetId}\`) || 
-                             utils.qs('[class*="wf_target"]') ||
-                             utils.qs('[class*="wf_layout"]');
+          const wfContainer = utils.qs(\`.wf_target_\${CONFIG.wfTargetId}\`);
           
-          if (!wfContainer) return null;
+          if (!wfContainer) {
+            debug('Specific target container not found:', \`.wf_target_\${CONFIG.wfTargetId}\`);
+            return null;
+          }
+          
+          debug('Found specific target container:', wfContainer.className);
           
           return {
             button: utils.qs('button', wfContainer),
             nameField: utils.qs('input[name="name"], input[type="name"]', wfContainer),
             emailField: utils.qs('input[name="email"], input[type="email"]', wfContainer),
             phoneField: utils.qs('input[name="tel"], input[type="tel"], input[name="phone"]', wfContainer)
+          };
+        },
+        
+        // Strategy 2: Fallback to generic WF patterns (only if specific target not found)
+        () => {
+          debug('Trying fallback: looking for any wf_button');
+          
+          return {
+            button: utils.qs('.wf_button') || 
+                    utils.qs('button[class*="wf_"]') ||
+                    utils.qs('[class*="wf_element"] button') ||
+                    utils.qs('[id*="wf_element"] button'),
+            nameField: utils.qs('input[name="name"]') || utils.qs('input[type="name"]'),
+            emailField: utils.qs('input[name="email"]') || utils.qs('input[type="email"]'),
+            phoneField: utils.qs('input[name="tel"]') || utils.qs('input[type="tel"]') || utils.qs('input[name="phone"]')
           };
         },
         
