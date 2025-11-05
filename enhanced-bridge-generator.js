@@ -1531,6 +1531,15 @@ document.addEventListener('DOMContentLoaded', function () {
     return `<!-- Dynamic Date Replacement Script -->
 <!-- Add 'date-long', 'date-short', or 'event-time' classes to elements you want updated -->
 <style>
+  /* Hide entire page until dates are ready - prevents placeholder text from showing */
+  body {
+    opacity: 0 !important;
+    transition: opacity 0.5s ease-in-out;
+  }
+  body.dates-ready {
+    opacity: 1 !important;
+  }
+  
   /* Date elements use fade-in after being populated */
   .date-long, .date-short, .event-time {
     opacity: 0;
@@ -1551,11 +1560,20 @@ document.addEventListener('DOMContentLoaded', function() {
   var lastSuccessfulDate = null;
   var isUpdatingDates = false;
   var hydrationStableTimeout = null;
+  var pageShown = false;
   
   // Watch for DOM mutations to stop (framework finished hydrating)
   var mutationCount = 0;
   var lastMutationTime = Date.now();
-  var stableWaitTime = 1000; // Wait for 1 second of no mutations
+  var stableWaitTime = 800; // Wait for 800ms of no mutations (balance between speed and safety)
+  
+  function showPage() {
+    if (!pageShown) {
+      pageShown = true;
+      console.log('[Date Replacement] 🎉 Showing page with dates ready!');
+      document.body.classList.add('dates-ready');
+    }
+  }
   
   var observer = new MutationObserver(function(mutations) {
     // Framework is still making changes
@@ -1569,16 +1587,21 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Set a new timeout - if no more mutations for stableWaitTime, assume hydration is done
     hydrationStableTimeout = setTimeout(function() {
-      console.log('[Date Replacement] 🎉 DOM stable for ' + stableWaitTime + 'ms - framework hydration appears complete');
+      console.log('[Date Replacement] DOM stable for ' + stableWaitTime + 'ms - framework hydration complete');
       console.log('[Date Replacement] Total mutations observed: ' + mutationCount);
       
       // Disconnect observer - we're done watching
       observer.disconnect();
       
-      // If we have a date, apply it now
+      // If we have a date, apply it now then show page
       if (lastSuccessfulDate && !isUpdatingDates) {
         console.log('[Date Replacement] Applying dates now that DOM is stable');
         processDateReplacements(lastSuccessfulDate);
+        // Show page after dates are applied
+        setTimeout(showPage, 100); // Small delay to ensure DOM updates complete
+      } else {
+        // No dates to apply, just show the page
+        showPage();
       }
     }, stableWaitTime);
   });
@@ -1593,6 +1616,17 @@ document.addEventListener('DOMContentLoaded', function() {
       characterData: true
     });
   });
+  
+  // Fallback: show page after 4 seconds no matter what
+  setTimeout(function() {
+    if (!pageShown) {
+      console.log('[Date Replacement] ⏰ Fallback timeout - showing page after 4 seconds');
+      if (lastSuccessfulDate && !isUpdatingDates) {
+        processDateReplacements(lastSuccessfulDate);
+      }
+      showPage();
+    }
+  }, 4000);
   
   function tryExtractAndUpdate() {
     console.log('[Date Replacement] Attempt ' + (41 - attemptsLeft) + '/40 - Looking for WebinarFuel date...');
