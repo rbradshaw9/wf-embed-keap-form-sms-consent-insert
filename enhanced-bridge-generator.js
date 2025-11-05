@@ -1590,10 +1590,13 @@ document.addEventListener('DOMContentLoaded', function() {
       lastSuccessfulDate = rawDate; // Store for potential re-application
       
       // Wait for framework hydration to complete before showing dates
-      // This prevents flashing as the framework re-renders the page
+      // Hydration typically completes 2-5 seconds after page load
+      // We'll wait 2 seconds to let the framework finish re-rendering
+      console.log('[Date Replacement] Waiting for page hydration to complete...');
       setTimeout(function() {
+        console.log('[Date Replacement] Hydration should be complete, applying dates now');
         processDateReplacements(rawDate);
-      }, 500); // Wait 500ms for hydration to settle
+      }, 2000); // Wait 2 seconds for hydration to complete
       
       return; // Stop trying
     }
