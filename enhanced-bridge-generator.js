@@ -1590,10 +1590,9 @@ document.addEventListener('DOMContentLoaded', function() {
       // Show the page
       document.body.classList.add('hydrated');
       
-      // If we already have the date, apply it now (only once!)
-      if (lastSuccessfulDate && !isUpdatingDates) {
+      // If we already have the date, apply it now
+      if (lastSuccessfulDate) {
         console.log('[Date Replacement] Applying dates immediately after hydration');
-        isUpdatingDates = true; // Prevent any re-entry
         processDateReplacements(lastSuccessfulDate);
       }
     }
@@ -1607,8 +1606,7 @@ document.addEventListener('DOMContentLoaded', function() {
       clearInterval(hydrationWatcher);
       document.body.classList.add('hydrated');
       
-      if (lastSuccessfulDate && !isUpdatingDates) {
-        isUpdatingDates = true;
+      if (lastSuccessfulDate) {
         processDateReplacements(lastSuccessfulDate);
       }
     }
@@ -1650,12 +1648,11 @@ document.addEventListener('DOMContentLoaded', function() {
       foundDate = true;
       lastSuccessfulDate = rawDate; // Store for application after hydration
       
-      // If hydration is already complete, apply dates immediately (but only once!)
-      if (hydrationComplete && !isUpdatingDates) {
+      // If hydration is already complete, apply dates immediately
+      if (hydrationComplete) {
         console.log('[Date Replacement] Hydration already complete, applying dates now');
-        isUpdatingDates = true; // Critical: prevent re-entry
         processDateReplacements(rawDate);
-      } else if (!hydrationComplete) {
+      } else {
         console.log('[Date Replacement] Waiting for hydration to complete before showing dates...');
         // The hydration watcher will call processDateReplacements when ready
       }
