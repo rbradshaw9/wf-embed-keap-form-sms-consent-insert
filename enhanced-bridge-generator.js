@@ -431,7 +431,107 @@ document.addEventListener('DOMContentLoaded', function () {
       debug('Attempting to extract webinar date from WebinarFuel');
       
       try {
-        // Strategy 1: Look for date in the WebinarFuel modal (wf_datetime element) - PRIMARY
+        // Strategy 1: Check WebinarFuel's configuration object in window._wf array
+        // This is the most reliable source as it contains the actual session data
+        if (window._wf && Array.isArray(window._wf)) {
+          debug('Checking window._wf array, length:', window._wf.length);
+          const config = window._wf.find(c => c.target === targetId);
+          if (config) {
+            debug('Found config for target:', targetId, config);
+            
+            // Try formatted_scheduled_at first (human-readable)
+            if (config.formatted_scheduled_at) {
+              debug('Found formatted_scheduled_at:', config.formatted_scheduled_at);
+              return config.formatted_scheduled_at;
+            }
+            
+            // Try scheduled_at (ISO8601 format)
+            if (config.scheduled_at) {
+              debug('Found scheduled_at (ISO):', config.scheduled_at);
+              return config.scheduled_at;
+            }
+            
+            // Try any schedule property
+            if (config.schedule) {
+              debug('Found schedule property:', config.schedule);
+              return config.schedule;
+            }
+            
+            // Try session data if available
+            if (config.session) {
+              if (config.session.formatted_scheduled_at) {
+                debug('Found session.formatted_scheduled_at:', config.session.formatted_scheduled_at);
+                return config.session.formatted_scheduled_at;
+              }
+              if (config.session.scheduled_at) {
+                debug('Found session.scheduled_at:', config.session.scheduled_at);
+                return config.session.scheduled_at;
+              }
+            }
+          }
+        }
+        
+        // Strategy 2: Check localStorage for WebinarFuel data
+        try {
+          const keys = Object.keys(localStorage);
+          debug('Checking localStorage, found keys:', keys.length);
+          for (let i = 0; i < keys.length; i++) {
+            const key = keys[i];
+            if (key.includes('webinarfuel') || key.includes('wf_') || key.includes('_wf')) {
+              try {
+                const data = JSON.parse(localStorage.getItem(key));
+                debug('Found WebinarFuel localStorage key:', key, data);
+                if (data && typeof data === 'object') {
+                  if (data.formatted_scheduled_at) return data.formatted_scheduled_at;
+                  if (data.scheduled_at) return data.scheduled_at;
+                  if (data.schedule) return data.schedule;
+                  if (data.session && data.session.formatted_scheduled_at) return data.session.formatted_scheduled_at;
+                  if (data.session && data.session.scheduled_at) return data.session.scheduled_at;
+                }
+              } catch (e) {
+                // Not JSON or parsing failed, skip
+              }
+            }
+          }
+        } catch (e) {
+          debug('localStorage check failed:', e);
+        }
+        
+        // Strategy 3: Look in window.WF object methods
+        if (window.WF) {
+          debug('window.WF object exists, checking methods...');
+          
+          // Try getSchedule method
+          if (typeof window.WF.getSchedule === 'function') {
+            const schedule = window.WF.getSchedule(targetId);
+            if (schedule) {
+              debug('Found schedule via WF.getSchedule:', schedule);
+              return schedule;
+            }
+          }
+          
+          // Try getSession method
+          if (typeof window.WF.getSession === 'function') {
+            const session = window.WF.getSession(targetId);
+            if (session) {
+              debug('Found session via WF.getSession:', session);
+              if (session.formatted_scheduled_at) return session.formatted_scheduled_at;
+              if (session.scheduled_at) return session.scheduled_at;
+            }
+          }
+          
+          // Check if WF has a sessions property
+          if (window.WF.sessions && typeof window.WF.sessions === 'object') {
+            debug('Checking WF.sessions object');
+            const session = window.WF.sessions[targetId];
+            if (session) {
+              if (session.formatted_scheduled_at) return session.formatted_scheduled_at;
+              if (session.scheduled_at) return session.scheduled_at;
+            }
+          }
+        }
+        
+        // Strategy 4: Look for date in the WebinarFuel modal (wf_datetime element)
         const dateTimeElement = utils.qs('.wf_datetime');
         if (dateTimeElement && dateTimeElement.textContent) {
           const dateText = dateTimeElement.textContent.trim();
@@ -441,7 +541,7 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         }
         
-        // Strategy 2: Look for date in dropdown value (alternative location in modal)
+        // Strategy 5: Look for date in dropdown value (alternative location in modal)
         const dropdownValues = utils.qsa('.wf_dropdown_value');
         for (let i = 0; i < dropdownValues.length; i++) {
           const dateText = dropdownValues[i].textContent.trim();
@@ -452,16 +552,7 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         }
         
-        // Strategy 3: Look in window._wf array for schedule data
-        if (window._wf && Array.isArray(window._wf)) {
-          const config = window._wf.find(c => c.target === targetId);
-          if (config && config.schedule) {
-            debug('Found schedule in window._wf:', config.schedule);
-            return config.schedule;
-          }
-        }
-        
-        // Strategy 4: Search all elements with wf_ classes for date patterns
+        // Strategy 6: Search all elements with wf_ classes for date patterns
         const wfElements = utils.qsa('[class*="wf_"]');
         for (let i = 0; i < wfElements.length; i++) {
           const text = wfElements[i].textContent.trim();
@@ -472,7 +563,7 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         }
         
-        // Strategy 5: Look for date in DOM elements within the specific container
+        // Strategy 7: Look for date in DOM elements within the specific container
         const wfContainer = utils.qs('.wf_target_' + targetId);
         if (wfContainer) {
           // Check for date/time elements
@@ -483,23 +574,14 @@ document.addEventListener('DOMContentLoaded', function () {
           }
           
           // Check for data attributes
-          if (wfContainer.dataset.schedule || wfContainer.dataset.date) {
-            const dateValue = wfContainer.dataset.schedule || wfContainer.dataset.date;
+          if (wfContainer.dataset.schedule || wfContainer.dataset.date || wfContainer.dataset.scheduledAt) {
+            const dateValue = wfContainer.dataset.schedule || wfContainer.dataset.date || wfContainer.dataset.scheduledAt;
             debug('Found date in data attribute:', dateValue);
             return dateValue;
           }
         }
         
-        // Strategy 6: Look in window.WF object if available
-        if (window.WF && typeof window.WF.getSchedule === 'function') {
-          const schedule = window.WF.getSchedule(targetId);
-          if (schedule) {
-            debug('Found schedule via WF.getSchedule:', schedule);
-            return schedule;
-          }
-        }
-        
-        debug('No webinar date found');
+        debug('No webinar date found after checking all strategies');
         return null;
       } catch (error) {
         debug('Error extracting webinar date:', error);
@@ -1502,43 +1584,57 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Helper function to parse WebinarFuel date format
-    // Format: "Sat, Nov 8th 2025 @ 3:00 PM AST"
+    // Handles multiple formats:
+    // 1. WebinarFuel text format: "Sat, Nov 8th 2025 @ 3:00 PM AST"
+    // 2. ISO8601 format from API: "2025-11-08T15:00:00Z" or "2025-11-08T15:00:00-04:00"
     function parseWFDate(dateStr) {
       try {
-        console.log('[Date Replacement] Parsing WebinarFuel date:', dateStr);
-        // Extract date parts from WebinarFuel format
-        var match = dateStr.match(/(\\w+),\\s+(\\w+)\\s+(\\d+)\\w+\\s+(\\d{4})\\s+@\\s+(\\d{1,2}):(\\d{2})\\s+(AM|PM)\\s+(\\w+)/i);
-        if (!match) {
-          console.warn('[Date Replacement] Could not parse date format:', dateStr);
-          console.warn('[Date Replacement] Trying direct Date parse...');
-          // Try to parse it directly
-          var directDate = new Date(dateStr);
-          if (!isNaN(directDate.getTime())) {
-            console.log('[Date Replacement] Direct parse successful');
-            return directDate;
+        console.log('[Date Replacement] Parsing date:', dateStr);
+        
+        // Check if it's already an ISO8601 format (from API)
+        if (dateStr.includes('T') && (dateStr.includes('Z') || dateStr.includes('+') || dateStr.includes('-'))) {
+          console.log('[Date Replacement] Detected ISO8601 format');
+          var isoDate = new Date(dateStr);
+          if (!isNaN(isoDate.getTime())) {
+            console.log('[Date Replacement] ISO8601 parse successful:', isoDate);
+            return isoDate;
           }
-          return null;
         }
         
-        console.log('[Date Replacement] Regex match found:', match);
-        var month = match[2];
-        var day = parseInt(match[3]);
-        var year = parseInt(match[4]);
-        var hour = parseInt(match[5]);
-        var minute = match[6];
-        var ampm = match[7].toUpperCase();
-        var timezone = match[8];
+        // Try WebinarFuel text format: "Sat, Nov 8th 2025 @ 3:00 PM AST"
+        var match = dateStr.match(/(\\w+),\\s+(\\w+)\\s+(\\d+)\\w+\\s+(\\d{4})\\s+@\\s+(\\d{1,2}):(\\d{2})\\s+(AM|PM)\\s+(\\w+)/i);
+        if (match) {
+          console.log('[Date Replacement] Regex match found:', match);
+          var month = match[2];
+          var day = parseInt(match[3]);
+          var year = parseInt(match[4]);
+          var hour = parseInt(match[5]);
+          var minute = match[6];
+          var ampm = match[7].toUpperCase();
+          var timezone = match[8];
+          
+          // Convert to 24-hour format
+          if (ampm === 'PM' && hour !== 12) hour += 12;
+          if (ampm === 'AM' && hour === 12) hour = 0;
+          
+          // Create date string
+          var dateString = month + ' ' + day + ', ' + year + ' ' + hour + ':' + minute + ':00';
+          console.log('[Date Replacement] Constructed date string:', dateString);
+          var parsedDate = new Date(dateString);
+          console.log('[Date Replacement] Parsed date object:', parsedDate);
+          return parsedDate;
+        }
         
-        // Convert to 24-hour format
-        if (ampm === 'PM' && hour !== 12) hour += 12;
-        if (ampm === 'AM' && hour === 12) hour = 0;
+        // Fallback: try direct Date parse
+        console.warn('[Date Replacement] Trying direct Date parse...');
+        var directDate = new Date(dateStr);
+        if (!isNaN(directDate.getTime())) {
+          console.log('[Date Replacement] Direct parse successful');
+          return directDate;
+        }
         
-        // Create date string
-        var dateString = month + ' ' + day + ', ' + year + ' ' + hour + ':' + minute + ':00';
-        console.log('[Date Replacement] Constructed date string:', dateString);
-        var parsedDate = new Date(dateString);
-        console.log('[Date Replacement] Parsed date object:', parsedDate);
-        return parsedDate;
+        console.warn('[Date Replacement] Could not parse date format:', dateStr);
+        return null;
       } catch (e) {
         console.error('[Date Replacement] Error parsing date:', e);
         return null;
