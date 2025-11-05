@@ -1531,15 +1531,6 @@ document.addEventListener('DOMContentLoaded', function () {
     return `<!-- Dynamic Date Replacement Script -->
 <!-- Add 'date-long', 'date-short', or 'event-time' classes to elements you want updated -->
 <style>
-  /* Hide entire page body until hydration completes to prevent flash */
-  body {
-    opacity: 0;
-    transition: opacity 0.3s ease-in-out;
-  }
-  body.hydrated {
-    opacity: 1;
-  }
-  
   /* Date elements use fade-in after being populated */
   .date-long, .date-short, .event-time {
     opacity: 0;
@@ -1555,62 +1546,53 @@ document.addEventListener('DOMContentLoaded', function() {
   console.log('[Date Replacement] Script loaded and waiting for WebinarFuel...');
   
   var attemptsLeft = 40; // Try up to 40 times (4 seconds max)
-  var checkInterval = 100; // Check every 100ms (much faster!)
+  var checkInterval = 100; // Check every 100ms
   var foundDate = false;
-  var hydrationComplete = false;
-  
-  // Store the last successful date for re-application after hydration
   var lastSuccessfulDate = null;
-  var isUpdatingDates = false; // Flag to prevent infinite loops
-  var hydrationCheckCount = 0;
-  var maxHydrationChecks = 50; // Check for up to 5 seconds
+  var isUpdatingDates = false;
+  var hydrationStableTimeout = null;
   
-  // Watch for hydration completion
-  // Wait until page is fully loaded AND stable (no more DOM mutations for 200ms)
-  var hydrationWatcher = setInterval(function() {
-    hydrationCheckCount++;
+  // Watch for DOM mutations to stop (framework finished hydrating)
+  var mutationCount = 0;
+  var lastMutationTime = Date.now();
+  var stableWaitTime = 1000; // Wait for 1 second of no mutations
+  
+  var observer = new MutationObserver(function(mutations) {
+    // Framework is still making changes
+    mutationCount += mutations.length;
+    lastMutationTime = Date.now();
     
-    // Only check after page is loaded
-    if (document.readyState !== 'complete') {
-      return;
+    // Clear any pending stable timeout
+    if (hydrationStableTimeout) {
+      clearTimeout(hydrationStableTimeout);
     }
     
-    // Give the framework time to hydrate - wait at least 1.5 seconds after DOMContentLoaded
-    // This ensures the framework has had time to do its initial render
-    if (hydrationCheckCount < 15) { // 15 * 100ms = 1500ms minimum wait
-      return;
-    }
-    
-    // At this point, assume hydration is done and mark as complete
-    if (!hydrationComplete) {
-      console.log('[Date Replacement] 🎉 Hydration complete! Showing page...');
-      hydrationComplete = true;
-      clearInterval(hydrationWatcher); // CRITICAL: Stop the interval immediately!
+    // Set a new timeout - if no more mutations for stableWaitTime, assume hydration is done
+    hydrationStableTimeout = setTimeout(function() {
+      console.log('[Date Replacement] 🎉 DOM stable for ' + stableWaitTime + 'ms - framework hydration appears complete');
+      console.log('[Date Replacement] Total mutations observed: ' + mutationCount);
       
-      // Show the page
-      document.body.classList.add('hydrated');
+      // Disconnect observer - we're done watching
+      observer.disconnect();
       
-      // If we already have the date, apply it now
-      if (lastSuccessfulDate) {
-        console.log('[Date Replacement] Applying dates immediately after hydration');
+      // If we have a date, apply it now
+      if (lastSuccessfulDate && !isUpdatingDates) {
+        console.log('[Date Replacement] Applying dates now that DOM is stable');
         processDateReplacements(lastSuccessfulDate);
       }
-    }
-  }, 100);
+    }, stableWaitTime);
+  });
   
-  // Fallback: show page after 5 seconds no matter what
-  setTimeout(function() {
-    if (!hydrationComplete) {
-      console.log('[Date Replacement] Fallback: Showing page after 5 second timeout');
-      hydrationComplete = true;
-      clearInterval(hydrationWatcher);
-      document.body.classList.add('hydrated');
-      
-      if (lastSuccessfulDate) {
-        processDateReplacements(lastSuccessfulDate);
-      }
-    }
-  }, 5000);
+  // Start observing after page loads
+  window.addEventListener('load', function() {
+    console.log('[Date Replacement] Page loaded, starting DOM mutation observer...');
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      characterData: true
+    });
+  });
   
   function tryExtractAndUpdate() {
     console.log('[Date Replacement] Attempt ' + (41 - attemptsLeft) + '/40 - Looking for WebinarFuel date...');
@@ -1646,16 +1628,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (rawDate) {
       console.log('[Date Replacement] ✅ Date found! Processing...');
       foundDate = true;
-      lastSuccessfulDate = rawDate; // Store for application after hydration
+      lastSuccessfulDate = rawDate; // Store for later application
       
-      // If hydration is already complete, apply dates immediately
-      if (hydrationComplete) {
-        console.log('[Date Replacement] Hydration already complete, applying dates now');
-        processDateReplacements(rawDate);
-      } else {
-        console.log('[Date Replacement] Waiting for hydration to complete before showing dates...');
-        // The hydration watcher will call processDateReplacements when ready
-      }
+      // Date is ready - just wait for DOM to stabilize
+      // The mutation observer will apply it when ready
+      console.log('[Date Replacement] Date stored, waiting for DOM to stabilize...');
       
       return; // Stop trying
     }
