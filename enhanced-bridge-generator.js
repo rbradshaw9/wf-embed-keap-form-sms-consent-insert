@@ -1575,7 +1575,7 @@ body.dates-ready:not(.hl_page-creator--open) {
     return `<!-- Dynamic Date Replacement Script -->
 <!-- Add 'date-long', 'date-short', or 'event-time' classes to elements you want updated -->
 <script>
-// Wait for bridge to initialize and WebinarFuel to load
+// Aggressive date replacement: apply immediately, watch for reverts, re-apply
 document.addEventListener('DOMContentLoaded', function() {
   console.log('[Date Replacement] Script loaded and waiting for WebinarFuel...');
   
@@ -1584,57 +1584,47 @@ document.addEventListener('DOMContentLoaded', function() {
   var foundDate = false;
   var lastSuccessfulDate = null;
   var isUpdatingDates = false;
-  var hydrationStableTimeout = null;
+  var appliedElements = new Map(); // Track what we've applied: element -> expected text
+  var revertWatcher = null;
   
-  // Watch for DOM mutations to stop (framework finished hydrating)
-  var mutationCount = 0;
-  var lastMutationTime = Date.now();
-  var stableWaitTime = 2000; // Wait for 2 seconds of no mutations (GHL hydration can take time)
-  
-  var observer = new MutationObserver(function(mutations) {
-    // Framework is still making changes
-    mutationCount += mutations.length;
-    lastMutationTime = Date.now();
+  // Watch for GHL reverting our changes and immediately re-apply
+  function startRevertWatcher() {
+    if (revertWatcher) return; // Already watching
     
-    // Clear any pending stable timeout
-    if (hydrationStableTimeout) {
-      clearTimeout(hydrationStableTimeout);
-    }
+    console.log('[Date Replacement] 🔒 Starting revert protection - will re-apply if GHL changes dates back');
     
-    // Set a new timeout - if no more mutations for stableWaitTime, assume hydration is done
-    hydrationStableTimeout = setTimeout(function() {
-      console.log('[Date Replacement] DOM stable for ' + stableWaitTime + 'ms - framework hydration complete');
-      console.log('[Date Replacement] Total mutations observed: ' + mutationCount);
+    revertWatcher = new MutationObserver(function(mutations) {
+      // Check if any of our date elements got reverted
+      var needsReapply = false;
       
-      // Disconnect observer - we're done watching
-      observer.disconnect();
+      appliedElements.forEach(function(expectedText, element) {
+        if (element.textContent !== expectedText) {
+          console.log('[Date Replacement] ⚠️ Detected revert on element, re-applying date');
+          needsReapply = true;
+        }
+      });
       
-      // If we have a date, apply it now
-      if (lastSuccessfulDate && !isUpdatingDates) {
-        console.log('[Date Replacement] Applying dates now that DOM is stable');
+      if (needsReapply && lastSuccessfulDate && !isUpdatingDates) {
         processDateReplacements(lastSuccessfulDate);
       }
-    }, stableWaitTime);
-  });
-  
-  // Start observing after page loads
-  window.addEventListener('load', function() {
-    console.log('[Date Replacement] Page loaded, starting DOM mutation observer...');
-    observer.observe(document.body, {
+    });
+    
+    // Watch the entire body for changes
+    revertWatcher.observe(document.body, {
       childList: true,
       subtree: true,
-      attributes: true,
       characterData: true
     });
-  });
-  
-  // Fallback: apply dates after 6 seconds no matter what (ensure hydration is complete)
-  setTimeout(function() {
-    console.log('[Date Replacement] ⏰ Fallback timeout - applying dates after 6 seconds');
-    if (lastSuccessfulDate && !isUpdatingDates) {
-      processDateReplacements(lastSuccessfulDate);
-    }
-  }, 6000);
+    
+    // Stop watching after 5 seconds (hydration should be done by then)
+    setTimeout(function() {
+      console.log('[Date Replacement] ✅ Stopping revert watcher - hydration period complete');
+      if (revertWatcher) {
+        revertWatcher.disconnect();
+        revertWatcher = null;
+      }
+    }, 5000);
+  }
   
   function tryExtractAndUpdate() {
     console.log('[Date Replacement] Attempt ' + (41 - attemptsLeft) + '/40 - Looking for WebinarFuel date...');
@@ -1668,13 +1658,15 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('[Date Replacement] Raw date from WFBridge.getWebinarDate():', rawDate);
     
     if (rawDate) {
-      console.log('[Date Replacement] ✅ Date found! Processing...');
+      console.log('[Date Replacement] ✅ Date found! Applying immediately...');
       foundDate = true;
-      lastSuccessfulDate = rawDate; // Store for later application
+      lastSuccessfulDate = rawDate;
       
-      // Date is ready - just wait for DOM to stabilize
-      // The mutation observer will apply it when ready
-      console.log('[Date Replacement] Date stored, waiting for DOM to stabilize...');
+      // Apply dates RIGHT NOW for fast display
+      processDateReplacements(rawDate);
+      
+      // Start watching for GHL reverting our changes
+      startRevertWatcher();
       
       return; // Stop trying
     }
@@ -1834,8 +1826,13 @@ document.addEventListener('DOMContentLoaded', function() {
               var day = date.getDate();
               var suffix = getOrdinalSuffix(day);
               
-              element.textContent = weekday + ' ' + month + ' ' + day + suffix;
+              var formattedText = weekday + ' ' + month + ' ' + day + suffix;
+              element.textContent = formattedText;
               element.classList.add('loaded'); // Make visible
+              
+              // Track this element to detect reverts
+              appliedElements.set(element, formattedText);
+              
               console.log('[Date Replacement] Successfully updated .date-long element');
             }
           } catch (e) {
@@ -1864,8 +1861,13 @@ document.addEventListener('DOMContentLoaded', function() {
               var day = date.getDate();
               var suffix = getOrdinalSuffix(day);
               
-              element.textContent = weekday + ' ' + month + ' ' + day + suffix;
+              var formattedText = weekday + ' ' + month + ' ' + day + suffix;
+              element.textContent = formattedText;
               element.classList.add('loaded'); // Make visible
+              
+              // Track this element to detect reverts
+              appliedElements.set(element, formattedText);
+              
               console.log('[Date Replacement] Successfully updated .date-short element');
             }
           } catch (e) {
@@ -1888,6 +1890,10 @@ document.addEventListener('DOMContentLoaded', function() {
           var formatted = formatMultiTimezone(rawDateStr);
           element.textContent = formatted;
           element.classList.add('loaded'); // Make visible
+          
+          // Track this element to detect reverts
+          appliedElements.set(element, formatted);
+          
           console.log('[Date Replacement] Successfully updated .event-time element');
         } catch (e) {
           console.error('[Date Replacement] Error formatting event time:', e);
@@ -1900,6 +1906,9 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('[Date Replacement] No elements found with .date-long, .date-short, or .event-time classes');
       console.log('[Date Replacement] Add these classes to elements in your GHL page to enable date replacement');
     }
+    
+    // Reset flag to allow re-application if GHL reverts our changes
+    isUpdatingDates = false;
   }
   
   // Start trying to extract and update immediately
