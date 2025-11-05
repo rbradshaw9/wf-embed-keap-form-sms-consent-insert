@@ -1415,14 +1415,68 @@ document.addEventListener('DOMContentLoaded', function () {
    */
   generateDateReplacementScript(config) {
     return `<!-- Dynamic Date Replacement Script -->
-<!-- Add 'date-long' or 'date-short' classes to elements you want updated -->
+<!-- Add 'date-long', 'date-short', or 'event-time' classes to elements you want updated -->
 <script>
 // Wait for bridge to initialize and WebinarFuel to load
 document.addEventListener('DOMContentLoaded', function() {
   // Give WebinarFuel time to load and populate schedule data
   setTimeout(function() {
     
+    // Helper function to add ordinal suffix (1st, 2nd, 3rd, etc.)
+    function getOrdinalSuffix(day) {
+      if (day > 3 && day < 21) return 'th';
+      switch (day % 10) {
+        case 1: return 'st';
+        case 2: return 'nd';
+        case 3: return 'rd';
+        default: return 'th';
+      }
+    }
+    
+    // Helper function to convert time across US timezones
+    function formatMultiTimezone(dateStr) {
+      try {
+        var date = new Date(dateStr);
+        
+        // Get time in each timezone
+        var est = date.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZone: 'America/New_York',
+          timeZoneName: 'short'
+        });
+        
+        var cst = date.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZone: 'America/Chicago',
+          timeZoneName: 'short'
+        });
+        
+        var mst = date.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZone: 'America/Denver',
+          timeZoneName: 'short'
+        });
+        
+        var pst = date.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZone: 'America/Los_Angeles',
+          timeZoneName: 'short'
+        });
+        
+        // Format: "2:00 PM EST | 1:00 PM CST | 12:00 PM MST | 11:00 AM PST"
+        return est + ' | ' + cst + ' | ' + mst + ' | ' + pst;
+      } catch (e) {
+        console.error('[Date Replacement] Error formatting multi-timezone:', e);
+        return dateStr;
+      }
+    }
+    
     // Update all elements with 'date-long' class
+    // Format: "Saturday November 8th"
     var longDateElements = document.querySelectorAll('.date-long');
     if (longDateElements.length > 0) {
       console.log('[Date Replacement] Found', longDateElements.length, 'elements with .date-long class');
@@ -1431,25 +1485,18 @@ document.addEventListener('DOMContentLoaded', function() {
         var success = WFBridge.updateElementWithDate('.date-long', {
           prefix: '', // Customize: "Join us on ", "Live Training: ", etc.
           format: function(dateStr) {
-            // Custom formatting for long dates
-            // Example output: "Monday, December 15, 2025 at 2:00 PM EST"
+            // Format: "Saturday November 8th"
             try {
               var date = new Date(dateStr);
-              var dateFormatted = date.toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              });
-              var timeFormatted = date.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                timeZoneName: 'short'
-              });
-              return dateFormatted + ' at ' + timeFormatted;
+              var weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
+              var month = date.toLocaleDateString('en-US', { month: 'long' });
+              var day = date.getDate();
+              var suffix = getOrdinalSuffix(day);
+              
+              return weekday + ' ' + month + ' ' + day + suffix;
             } catch (e) {
               console.error('[Date Replacement] Error formatting long date:', e);
-              return dateStr; // Return original if parsing fails
+              return dateStr;
             }
           }
         });
@@ -1461,6 +1508,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Update all elements with 'date-short' class
+    // Format: "Sat Nov 8th"
     var shortDateElements = document.querySelectorAll('.date-short');
     if (shortDateElements.length > 0) {
       console.log('[Date Replacement] Found', shortDateElements.length, 'elements with .date-short class');
@@ -1469,18 +1517,18 @@ document.addEventListener('DOMContentLoaded', function() {
         var success = WFBridge.updateElementWithDate('.date-short', {
           prefix: '', // Customize: "Next: ", "Register for ", etc.
           format: function(dateStr) {
-            // Custom formatting for short dates
-            // Example output: "Dec 15, 2025"
+            // Format: "Sat Nov 8th"
             try {
               var date = new Date(dateStr);
-              return date.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-              });
+              var weekday = date.toLocaleDateString('en-US', { weekday: 'short' });
+              var month = date.toLocaleDateString('en-US', { month: 'short' });
+              var day = date.getDate();
+              var suffix = getOrdinalSuffix(day);
+              
+              return weekday + ' ' + month + ' ' + day + suffix;
             } catch (e) {
               console.error('[Date Replacement] Error formatting short date:', e);
-              return dateStr; // Return original if parsing fails
+              return dateStr;
             }
           }
         });
@@ -1491,9 +1539,27 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
     
+    // Update all elements with 'event-time' class
+    // Format: "2:00 PM EST | 1:00 PM CST | 12:00 PM MST | 11:00 AM PST"
+    var eventTimeElements = document.querySelectorAll('.event-time');
+    if (eventTimeElements.length > 0) {
+      console.log('[Date Replacement] Found', eventTimeElements.length, 'elements with .event-time class');
+      
+      eventTimeElements.forEach(function(element) {
+        var success = WFBridge.updateElementWithDate('.event-time', {
+          prefix: '', // Customize if needed
+          format: formatMultiTimezone
+        });
+        
+        if (success) {
+          console.log('[Date Replacement] Successfully updated .event-time element');
+        }
+      });
+    }
+    
     // Check if any date elements were found
-    if (longDateElements.length === 0 && shortDateElements.length === 0) {
-      console.log('[Date Replacement] No elements found with .date-long or .date-short classes');
+    if (longDateElements.length === 0 && shortDateElements.length === 0 && eventTimeElements.length === 0) {
+      console.log('[Date Replacement] No elements found with .date-long, .date-short, or .event-time classes');
       console.log('[Date Replacement] Add these classes to elements in your GHL page to enable date replacement');
     }
     
