@@ -1530,19 +1530,30 @@ document.addEventListener('DOMContentLoaded', function () {
   generateDateReplacementScript(config) {
     return `<!-- Dynamic Date Replacement Script -->
 <!-- Add 'date-long', 'date-short', or 'event-time' classes to elements you want updated -->
+<style>
+  /* Hide date elements until they're populated */
+  .date-long, .date-short, .event-time {
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+  }
+  .date-long.loaded, .date-short.loaded, .event-time.loaded {
+    opacity: 1;
+  }
+</style>
 <script>
 // Wait for bridge to initialize and WebinarFuel to load
 document.addEventListener('DOMContentLoaded', function() {
   console.log('[Date Replacement] Script loaded and waiting for WebinarFuel...');
   
-  var attemptsLeft = 20; // Try up to 20 times (10 seconds)
-  var checkInterval = 500; // Check every 500ms
+  var attemptsLeft = 40; // Try up to 40 times (4 seconds max)
+  var checkInterval = 100; // Check every 100ms (much faster!)
+  var foundDate = false;
   
   function tryExtractAndUpdate() {
-    console.log('[Date Replacement] Attempt ' + (21 - attemptsLeft) + '/20 - Looking for WebinarFuel date...');
+    console.log('[Date Replacement] Attempt ' + (41 - attemptsLeft) + '/40 - Looking for WebinarFuel date...');
     
-    // Check what data is available
-    if (attemptsLeft === 20) {
+    // Check what data is available on first attempt
+    if (attemptsLeft === 40) {
       console.log('[Date Replacement] window._wf:', window._wf);
       console.log('[Date Replacement] window.WF:', window.WF);
       console.log('[Date Replacement] WFBridge:', window.WFBridge);
@@ -1554,6 +1565,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (rawDate) {
       console.log('[Date Replacement] ✅ Date found! Processing...');
+      foundDate = true;
       processDateReplacements(rawDate);
       return; // Stop trying
     }
@@ -1564,9 +1576,13 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('[Date Replacement] Date not found yet, will retry in ' + checkInterval + 'ms...');
       setTimeout(tryExtractAndUpdate, checkInterval);
     } else {
-      console.warn('[Date Replacement] ❌ Could not find webinar date after 20 attempts');
-      console.warn('[Date Replacement] The date appears in the WebinarFuel modal after clicking the button.');
-      console.warn('[Date Replacement] Date elements will be updated once a user clicks to register.');
+      console.warn('[Date Replacement] ❌ Could not find webinar date after 40 attempts');
+      console.warn('[Date Replacement] Showing elements anyway to prevent blank page');
+      // Show elements even without date to prevent invisible content
+      var allElements = document.querySelectorAll('.date-long, .date-short, .event-time');
+      for (var i = 0; i < allElements.length; i++) {
+        allElements[i].classList.add('loaded');
+      }
     }
   }
   
@@ -1702,6 +1718,7 @@ document.addEventListener('DOMContentLoaded', function() {
               var suffix = getOrdinalSuffix(day);
               
               element.textContent = weekday + ' ' + month + ' ' + day + suffix;
+              element.classList.add('loaded'); // Make visible
               console.log('[Date Replacement] Successfully updated .date-long element');
             }
           } catch (e) {
@@ -1731,6 +1748,7 @@ document.addEventListener('DOMContentLoaded', function() {
               var suffix = getOrdinalSuffix(day);
               
               element.textContent = weekday + ' ' + month + ' ' + day + suffix;
+              element.classList.add('loaded'); // Make visible
               console.log('[Date Replacement] Successfully updated .date-short element');
             }
           } catch (e) {
@@ -1752,6 +1770,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
           var formatted = formatMultiTimezone(rawDateStr);
           element.textContent = formatted;
+          element.classList.add('loaded'); // Make visible
           console.log('[Date Replacement] Successfully updated .event-time element');
         } catch (e) {
           console.error('[Date Replacement] Error formatting event time:', e);
@@ -1766,8 +1785,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Start trying to extract and update
-  setTimeout(tryExtractAndUpdate, 2500); // Wait 2.5 seconds before first attempt
+  // Start trying to extract and update immediately
+  tryExtractAndUpdate();
 });
 </script>`;
   }
