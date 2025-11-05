@@ -1525,30 +1525,30 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   /**
-   * Generate HEAD CSS to hide page until dates are ready
-   * This MUST be placed in the page <head> section to prevent flashing
+   * Generate CSS to hide page until dates are ready
+   * This goes in GHL Custom CSS section (pure CSS, no tags)
    */
   generateDateHidePageCSS() {
-    return `<!-- CRITICAL: Place this in HEAD section to prevent page flash -->
-<style id="wf-date-page-hide">
-  /* Hide entire page until dates are ready - prevents placeholder text from showing */
-  body {
-    opacity: 0 !important;
-    transition: opacity 0.5s ease-in-out;
-  }
-  body.dates-ready {
-    opacity: 1 !important;
-  }
-  
-  /* Date elements use fade-in after being populated */
-  .date-long, .date-short, .event-time {
-    opacity: 0;
-    transition: opacity 0.3s ease-in-out;
-  }
-  .date-long.loaded, .date-short.loaded, .event-time.loaded {
-    opacity: 1;
-  }
-</style>`;
+    return `/* CRITICAL: Paste this in GHL Custom CSS section */
+/* Hide entire page until dates are ready - prevents placeholder text from showing */
+body {
+  opacity: 0 !important;
+  transition: opacity 0.5s ease-in-out;
+}
+
+body.dates-ready {
+  opacity: 1 !important;
+}
+
+/* Date elements use fade-in after being populated */
+.date-long, .date-short, .event-time {
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.date-long.loaded, .date-short.loaded, .event-time.loaded {
+  opacity: 1;
+}`;
   }
 
   /**
