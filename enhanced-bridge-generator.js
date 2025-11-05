@@ -1586,6 +1586,8 @@ document.addEventListener('DOMContentLoaded', function() {
   var isUpdatingDates = false;
   var appliedElements = new Map(); // Track what we've applied: element -> expected text
   var revertWatcher = null;
+  var reapplyCount = 0; // Track how many times we've re-applied (prevent infinite loops)
+  var maxReapplies = 3; // Maximum number of re-applications allowed
   
   // Watch for GHL reverting our changes and immediately re-apply
   function startRevertWatcher() {
@@ -1594,17 +1596,29 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('[Date Replacement] 🔒 Starting revert protection - will re-apply if GHL changes dates back');
     
     revertWatcher = new MutationObserver(function(mutations) {
+      // Safety: Don't get into infinite loop
+      if (reapplyCount >= maxReapplies) {
+        console.warn('[Date Replacement] ⚠️ Max re-apply limit reached (' + maxReapplies + '), stopping revert watcher');
+        if (revertWatcher) {
+          revertWatcher.disconnect();
+          revertWatcher = null;
+        }
+        return;
+      }
+      
       // Check if any of our date elements got reverted
       var needsReapply = false;
       
       appliedElements.forEach(function(expectedText, element) {
         if (element.textContent !== expectedText) {
-          console.log('[Date Replacement] ⚠️ Detected revert on element, re-applying date');
+          console.log('[Date Replacement] ⚠️ Detected revert on element (expected: "' + expectedText + '", got: "' + element.textContent + '")');
           needsReapply = true;
         }
       });
       
       if (needsReapply && lastSuccessfulDate && !isUpdatingDates) {
+        reapplyCount++;
+        console.log('[Date Replacement] 🔄 Re-applying dates (attempt ' + reapplyCount + '/' + maxReapplies + ')');
         processDateReplacements(lastSuccessfulDate);
       }
     });
@@ -1688,12 +1702,21 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   function processDateReplacements(rawDateStr) {
-    // CRITICAL: Only run once! Prevent infinite loops and hydration mismatches
+    // CRITICAL: Only run once at a time! Prevent infinite loops
     if (isUpdatingDates) {
       console.log('[Date Replacement] ⚠️ Already updating dates, skipping to prevent loop');
       return;
     }
     isUpdatingDates = true;
+    
+    // CRITICAL: Temporarily disconnect the revert watcher while we update
+    // This prevents us from triggering ourselves and causing a loop
+    var wasWatching = false;
+    if (revertWatcher) {
+      console.log('[Date Replacement] 🔇 Temporarily pausing revert watcher during update');
+      revertWatcher.disconnect();
+      wasWatching = true;
+    }
     
     console.log('[Date Replacement] 🚀 Starting date replacement process...');
     
@@ -1909,6 +1932,47 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Reset flag to allow re-application if GHL reverts our changes
     isUpdatingDates = false;
+    
+    // CRITICAL: Re-enable the revert watcher after update is complete
+    if (wasWatching && revertWatcher === null && reapplyCount < maxReapplies) {
+      console.log('[Date Replacement] 🔊 Re-enabling revert watcher after update');
+      // Use setTimeout to ensure our changes are fully applied before we start watching again
+      setTimeout(function() {
+        if (revertWatcher === null) { // Still need to restart
+          revertWatcher = new MutationObserver(function(mutations) {
+            // Safety: Don't get into infinite loop
+            if (reapplyCount >= maxReapplies) {
+              console.warn('[Date Replacement] ⚠️ Max re-apply limit reached, stopping watcher');
+              if (revertWatcher) {
+                revertWatcher.disconnect();
+                revertWatcher = null;
+              }
+              return;
+            }
+            
+            var needsReapply = false;
+            appliedElements.forEach(function(expectedText, element) {
+              if (element.textContent !== expectedText) {
+                console.log('[Date Replacement] ⚠️ Detected revert (expected: "' + expectedText + '", got: "' + element.textContent + '")');
+                needsReapply = true;
+              }
+            });
+            
+            if (needsReapply && lastSuccessfulDate && !isUpdatingDates) {
+              reapplyCount++;
+              console.log('[Date Replacement] 🔄 Re-applying dates (attempt ' + reapplyCount + '/' + maxReapplies + ')');
+              processDateReplacements(lastSuccessfulDate);
+            }
+          });
+          
+          revertWatcher.observe(document.body, {
+            childList: true,
+            subtree: true,
+            characterData: true
+          });
+        }
+      }, 100); // Wait 100ms before re-enabling watcher
+    }
   }
   
   // Start trying to extract and update immediately
