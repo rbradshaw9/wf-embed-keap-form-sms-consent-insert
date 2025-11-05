@@ -424,6 +424,97 @@ document.addEventListener('DOMContentLoaded', function () {
       };
       
       check();
+    },
+
+    // Extract webinar date from WebinarFuel widget
+    getWebinarDate: (targetId) => {
+      debug('Attempting to extract webinar date from WebinarFuel');
+      
+      try {
+        // Strategy 1: Look in window._wf array for schedule data
+        if (window._wf && Array.isArray(window._wf)) {
+          const config = window._wf.find(c => c.target === targetId);
+          if (config && config.schedule) {
+            debug('Found schedule in window._wf:', config.schedule);
+            return config.schedule;
+          }
+        }
+        
+        // Strategy 2: Look for date in DOM elements within the specific container
+        const wfContainer = utils.qs('.wf_target_' + targetId);
+        if (wfContainer) {
+          // Check for date/time elements
+          const dateElement = utils.qs('[class*="date"], [class*="time"], [class*="schedule"]', wfContainer);
+          if (dateElement && dateElement.textContent) {
+            debug('Found date in DOM element:', dateElement.textContent);
+            return dateElement.textContent.trim();
+          }
+          
+          // Check for data attributes
+          if (wfContainer.dataset.schedule || wfContainer.dataset.date) {
+            const dateValue = wfContainer.dataset.schedule || wfContainer.dataset.date;
+            debug('Found date in data attribute:', dateValue);
+            return dateValue;
+          }
+        }
+        
+        // Strategy 3: Look in window.WF object if available
+        if (window.WF && typeof window.WF.getSchedule === 'function') {
+          const schedule = window.WF.getSchedule(targetId);
+          if (schedule) {
+            debug('Found schedule via WF.getSchedule:', schedule);
+            return schedule;
+          }
+        }
+        
+        debug('No webinar date found');
+        return null;
+      } catch (error) {
+        debug('Error extracting webinar date:', error);
+        return null;
+      }
+    },
+
+    // Update page element with webinar date
+    updateElementWithDate: (selector, dateValue, options = {}) => {
+      const {
+        format = null,  // Optional: function to format the date
+        prefix = '',    // Optional: text before date
+        suffix = '',    // Optional: text after date
+        attribute = null // Optional: update attribute instead of textContent
+      } = options;
+      
+      try {
+        const element = document.querySelector(selector);
+        if (!element) {
+          debug('Element not found for date update:', selector);
+          return false;
+        }
+        
+        let displayValue = dateValue;
+        
+        // Apply formatting if provided
+        if (format && typeof format === 'function') {
+          displayValue = format(dateValue);
+        }
+        
+        // Add prefix/suffix
+        const finalValue = prefix + displayValue + suffix;
+        
+        // Update element
+        if (attribute) {
+          element.setAttribute(attribute, finalValue);
+          debug('Updated ' + selector + ' attribute ' + attribute + ' with:', finalValue);
+        } else {
+          element.textContent = finalValue;
+          debug('Updated ' + selector + ' textContent with:', finalValue);
+        }
+        
+        return true;
+      } catch (error) {
+        debug('Error updating element with date:', error);
+        return false;
+      }
     }
   };
 
@@ -1211,6 +1302,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
     console.log('[WF Bridge] Bridge fully initialized for ${config.companyName}');
     
+    // Expose public API for date extraction
+    window.WFBridge = window.WFBridge || {};
+    window.WFBridge.getWebinarDate = function(targetId) {
+      targetId = targetId || '${config.wfTargetId}';
+      return utils.getWebinarDate(targetId);
+    };
+    window.WFBridge.updateElementWithDate = function(selector, options) {
+      const targetId = (options && options.targetId) || '${config.wfTargetId}';
+      const date = utils.getWebinarDate(targetId);
+      if (date) {
+        return utils.updateElementWithDate(selector, date, options);
+      }
+      return false;
+    };
+    
     // Debug mode instructions
     if (CONFIG.debugMode) {
       console.log('%c[WF Bridge] 🐛 DEBUG MODE ACTIVE - Comprehensive logging enabled', 'color: #ff6b35; font-weight: bold; font-size: 12px;');
@@ -1218,6 +1324,9 @@ document.addEventListener('DOMContentLoaded', function () {
       console.log('  • localStorage.removeItem("wf_bridge_debug") - Disable debug mode');
       console.log('  • console.clear() - Clear console');
       console.log('  • Add ?debug=true to URL to enable debug mode');
+      console.log('%c[WF Bridge] 📅 Date Extraction API:', 'color: #4a90e2; font-weight: bold;');
+      console.log('  • WFBridge.getWebinarDate() - Get webinar date');
+      console.log('  • WFBridge.updateElementWithDate(".my-headline", {prefix: "Join us on ", format: customFormatFn}) - Update element with date');
       debugSuccess('✅ Bridge initialization complete with debug logging');
     }
   });
