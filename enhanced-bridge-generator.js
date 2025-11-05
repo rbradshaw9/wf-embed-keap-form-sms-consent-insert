@@ -1530,13 +1530,14 @@ document.addEventListener('DOMContentLoaded', function () {
    */
   generateDateHidePageCSS() {
     return `/* CRITICAL: Paste this in GHL Custom CSS section */
-/* Hide entire page until dates are ready - prevents placeholder text from showing */
-body {
+/* Hide page content until dates are ready - prevents placeholder text from showing */
+/* Using :not() to avoid hiding GHL editor */
+body:not(.hl_page-creator--open) {
   opacity: 0 !important;
   transition: opacity 0.5s ease-in-out;
 }
 
-body.dates-ready {
+body.dates-ready:not(.hl_page-creator--open) {
   opacity: 1 !important;
 }
 
