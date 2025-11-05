@@ -1559,6 +1559,23 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('[Date Replacement] WFBridge:', window.WFBridge);
     }
     
+    // Check if WFBridge is ready before trying to use it
+    if (!window.WFBridge || typeof WFBridge.getWebinarDate !== 'function') {
+      console.log('[Date Replacement] WFBridge not ready yet, will retry in ' + checkInterval + 'ms...');
+      attemptsLeft--;
+      if (attemptsLeft > 0) {
+        setTimeout(tryExtractAndUpdate, checkInterval);
+      } else {
+        console.warn('[Date Replacement] ❌ WFBridge never loaded after 40 attempts');
+        // Show elements anyway to prevent invisible content
+        var allElements = document.querySelectorAll('.date-long, .date-short, .event-time');
+        for (var i = 0; i < allElements.length; i++) {
+          allElements[i].classList.add('loaded');
+        }
+      }
+      return;
+    }
+    
     // Try to get the date
     var rawDate = WFBridge.getWebinarDate();
     console.log('[Date Replacement] Raw date from WFBridge.getWebinarDate():', rawDate);
