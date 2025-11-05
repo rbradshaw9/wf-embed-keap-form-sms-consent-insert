@@ -1419,8 +1419,21 @@ document.addEventListener('DOMContentLoaded', function () {
 <script>
 // Wait for bridge to initialize and WebinarFuel to load
 document.addEventListener('DOMContentLoaded', function() {
+  console.log('[Date Replacement] Script loaded and waiting for WebinarFuel...');
+  
   // Give WebinarFuel time to load and populate schedule data
   setTimeout(function() {
+    console.log('[Date Replacement] Starting date extraction...');
+    
+    // Debug: Check what data is available
+    console.log('[Date Replacement] Checking for WebinarFuel data...');
+    console.log('[Date Replacement] window._wf:', window._wf);
+    console.log('[Date Replacement] window.WF:', window.WF);
+    console.log('[Date Replacement] WFBridge:', window.WFBridge);
+    
+    // Try to get the date
+    var rawDate = WFBridge.getWebinarDate();
+    console.log('[Date Replacement] Raw date from WFBridge.getWebinarDate():', rawDate);
     
     // Helper function to add ordinal suffix (1st, 2nd, 3rd, etc.)
     function getOrdinalSuffix(day) {
@@ -1481,12 +1494,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (longDateElements.length > 0) {
       console.log('[Date Replacement] Found', longDateElements.length, 'elements with .date-long class');
       
-      longDateElements.forEach(function(element) {
+      if (WFBridge && typeof WFBridge.updateElementWithDate === 'function') {
         var success = WFBridge.updateElementWithDate('.date-long', {
           prefix: '', // Customize: "Join us on ", "Live Training: ", etc.
           format: function(dateStr) {
             // Format: "Saturday November 8th"
             try {
+              console.log('[Date Replacement] Formatting date-long with:', dateStr);
               var date = new Date(dateStr);
               var weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
               var month = date.toLocaleDateString('en-US', { month: 'long' });
@@ -1503,8 +1517,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (success) {
           console.log('[Date Replacement] Successfully updated .date-long element');
+        } else {
+          console.warn('[Date Replacement] Failed to update .date-long element - no date data available');
         }
-      });
+      } else {
+        console.error('[Date Replacement] WFBridge.updateElementWithDate function not found!');
+      }
     }
     
     // Update all elements with 'date-short' class
@@ -1513,12 +1531,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (shortDateElements.length > 0) {
       console.log('[Date Replacement] Found', shortDateElements.length, 'elements with .date-short class');
       
-      shortDateElements.forEach(function(element) {
+      if (WFBridge && typeof WFBridge.updateElementWithDate === 'function') {
         var success = WFBridge.updateElementWithDate('.date-short', {
           prefix: '', // Customize: "Next: ", "Register for ", etc.
           format: function(dateStr) {
             // Format: "Sat Nov 8th"
             try {
+              console.log('[Date Replacement] Formatting date-short with:', dateStr);
               var date = new Date(dateStr);
               var weekday = date.toLocaleDateString('en-US', { weekday: 'short' });
               var month = date.toLocaleDateString('en-US', { month: 'short' });
@@ -1535,8 +1554,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (success) {
           console.log('[Date Replacement] Successfully updated .date-short element');
+        } else {
+          console.warn('[Date Replacement] Failed to update .date-short element - no date data available');
         }
-      });
+      } else {
+        console.error('[Date Replacement] WFBridge.updateElementWithDate function not found!');
+      }
     }
     
     // Update all elements with 'event-time' class
@@ -1545,7 +1568,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (eventTimeElements.length > 0) {
       console.log('[Date Replacement] Found', eventTimeElements.length, 'elements with .event-time class');
       
-      eventTimeElements.forEach(function(element) {
+      if (WFBridge && typeof WFBridge.updateElementWithDate === 'function') {
         var success = WFBridge.updateElementWithDate('.event-time', {
           prefix: '', // Customize if needed
           format: formatMultiTimezone
@@ -1553,8 +1576,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (success) {
           console.log('[Date Replacement] Successfully updated .event-time element');
+        } else {
+          console.warn('[Date Replacement] Failed to update .event-time element - no date data available');
         }
-      });
+      } else {
+        console.error('[Date Replacement] WFBridge.updateElementWithDate function not found!');
+      }
     }
     
     // Check if any date elements were found
