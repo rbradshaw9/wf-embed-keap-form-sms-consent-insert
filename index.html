@@ -256,6 +256,16 @@
             background: #38a169;
         }
 
+        code {
+            background: #f7fafc;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #d63384;
+            border: 1px solid #e2e8f0;
+        }
+
         .alert {
             padding: 12px 16px;
             margin: 16px 0;
@@ -588,6 +598,7 @@
                 <div class="result-tabs">
                     <button class="tab-btn active" onclick="showTab('wf-embed')">📺 WebinarFuel Button</button>
                     <button class="tab-btn" onclick="showTab('keap-form')">🔧 Custom HTML Block</button>
+                    <button class="tab-btn" onclick="showTab('date-script')">📅 Date Replacement (Optional)</button>
                 </div>
                 
                 <div class="tab-content active" id="wf-embed">
@@ -598,6 +609,18 @@
                 <div class="tab-content" id="keap-form">
                     <div class="code-output" id="keapFormCode"></div>
                     <button class="copy-btn" onclick="copyToClipboard('keapFormCode', this)">📋 Copy Code</button>
+                </div>
+                
+                <div class="tab-content" id="date-script">
+                    <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                        <strong>📅 How to use:</strong><br>
+                        1. Add class <code>date-long</code> or <code>date-short</code> to any text element in your GHL page<br>
+                        2. Copy this script and paste it in a Custom HTML element on your page<br>
+                        3. The dates will automatically update when the page loads!<br><br>
+                        <strong>Example:</strong> <code>&lt;h2 class="date-long"&gt;Upcoming Webinar&lt;/h2&gt;</code>
+                    </div>
+                    <div class="code-output" id="dateScriptCode"></div>
+                    <button class="copy-btn" onclick="copyToClipboard('dateScriptCode', this)">📋 Copy Code</button>
                 </div>
             </div>
         </div>
@@ -726,6 +749,7 @@
         function displayResults(results) {
             document.getElementById('wfEmbedCode').textContent = results.webinarFuelEmbed || 'No code generated';
             document.getElementById('keapFormCode').textContent = results.keapFormWithScript || 'No code generated';
+            document.getElementById('dateScriptCode').textContent = results.dateReplacementScript || 'No code generated';
             
             document.getElementById('results').style.display = 'block';
             document.getElementById('results').scrollIntoView({ behavior: 'smooth' });

@@ -1348,6 +1348,7 @@ document.addEventListener('DOMContentLoaded', function () {
       keapHiddenForm: this.cleanupKeapCode(keapCode),
       keapHelpers: this.generateKeapHelpers(config),
       bridgeScript: bridgeScript,
+      dateReplacementScript: this.generateDateReplacementScript(config),
       completeHTML: this.generateCompleteHTML(wfCode, keapCode, bridgeScript, config)
     };
   }
@@ -1407,6 +1408,98 @@ document.addEventListener('DOMContentLoaded', function () {
 <script src="https://${config.keapSubdomain}.infusionsoft.com/app/timezone/timezoneInputJs?xid=${config.keapFormId.replace('inf_form_', '')}" type="text/javascript"></script>
 <script src="https://${config.keapSubdomain}.infusionsoft.com/js/jquery/jquery-3.3.1.js" type="text/javascript"></script>
 <script src="https://${config.keapSubdomain}.infusionsoft.app/app/webform/overwriteRefererJs" type="text/javascript"></script>`;
+  }
+
+  /**
+   * Generate date replacement script for GHL pages
+   */
+  generateDateReplacementScript(config) {
+    return `<!-- Dynamic Date Replacement Script -->
+<!-- Add 'date-long' or 'date-short' classes to elements you want updated -->
+<script>
+// Wait for bridge to initialize and WebinarFuel to load
+document.addEventListener('DOMContentLoaded', function() {
+  // Give WebinarFuel time to load and populate schedule data
+  setTimeout(function() {
+    
+    // Update all elements with 'date-long' class
+    var longDateElements = document.querySelectorAll('.date-long');
+    if (longDateElements.length > 0) {
+      console.log('[Date Replacement] Found', longDateElements.length, 'elements with .date-long class');
+      
+      longDateElements.forEach(function(element) {
+        var success = WFBridge.updateElementWithDate('.date-long', {
+          prefix: '', // Customize: "Join us on ", "Live Training: ", etc.
+          format: function(dateStr) {
+            // Custom formatting for long dates
+            // Example output: "Monday, December 15, 2025 at 2:00 PM EST"
+            try {
+              var date = new Date(dateStr);
+              var dateFormatted = date.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              });
+              var timeFormatted = date.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                timeZoneName: 'short'
+              });
+              return dateFormatted + ' at ' + timeFormatted;
+            } catch (e) {
+              console.error('[Date Replacement] Error formatting long date:', e);
+              return dateStr; // Return original if parsing fails
+            }
+          }
+        });
+        
+        if (success) {
+          console.log('[Date Replacement] Successfully updated .date-long element');
+        }
+      });
+    }
+    
+    // Update all elements with 'date-short' class
+    var shortDateElements = document.querySelectorAll('.date-short');
+    if (shortDateElements.length > 0) {
+      console.log('[Date Replacement] Found', shortDateElements.length, 'elements with .date-short class');
+      
+      shortDateElements.forEach(function(element) {
+        var success = WFBridge.updateElementWithDate('.date-short', {
+          prefix: '', // Customize: "Next: ", "Register for ", etc.
+          format: function(dateStr) {
+            // Custom formatting for short dates
+            // Example output: "Dec 15, 2025"
+            try {
+              var date = new Date(dateStr);
+              return date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              });
+            } catch (e) {
+              console.error('[Date Replacement] Error formatting short date:', e);
+              return dateStr; // Return original if parsing fails
+            }
+          }
+        });
+        
+        if (success) {
+          console.log('[Date Replacement] Successfully updated .date-short element');
+        }
+      });
+    }
+    
+    // Check if any date elements were found
+    if (longDateElements.length === 0 && shortDateElements.length === 0) {
+      console.log('[Date Replacement] No elements found with .date-long or .date-short classes');
+      console.log('[Date Replacement] Add these classes to elements in your GHL page to enable date replacement');
+    }
+    
+  }, 2500); // Wait 2.5 seconds for WebinarFuel to load (adjust if needed)
+});
+</script>`;
   }
 
   /**
@@ -1478,9 +1571,13 @@ ${keapHelpers}
 ${bridgeScript}
 </script>`;
 
+    // Generate the date replacement script
+    const dateReplacementScript = this.generateDateReplacementScript(config);
+
     return {
       webinarFuelEmbed: cleanWfCode,
-      keapFormWithScript: keapFormWithScript
+      keapFormWithScript: keapFormWithScript,
+      dateReplacementScript: dateReplacementScript
     };
   }
 }
