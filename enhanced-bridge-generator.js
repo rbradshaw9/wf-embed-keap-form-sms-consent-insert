@@ -1531,7 +1531,16 @@ document.addEventListener('DOMContentLoaded', function () {
     return `<!-- Dynamic Date Replacement Script -->
 <!-- Add 'date-long', 'date-short', or 'event-time' classes to elements you want updated -->
 <style>
-  /* Hide date elements until they're populated */
+  /* Hide entire page body until hydration completes to prevent flash */
+  body {
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+  }
+  body.hydrated {
+    opacity: 1;
+  }
+  
+  /* Date elements use fade-in after being populated */
   .date-long, .date-short, .event-time {
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
@@ -1548,10 +1557,43 @@ document.addEventListener('DOMContentLoaded', function() {
   var attemptsLeft = 40; // Try up to 40 times (4 seconds max)
   var checkInterval = 100; // Check every 100ms (much faster!)
   var foundDate = false;
+  var hydrationComplete = false;
   
   // Store the last successful date for re-application after hydration
   var lastSuccessfulDate = null;
   var isUpdatingDates = false; // Flag to prevent infinite loops
+  
+  // Watch for hydration completion by checking if body gets modified
+  var hydrationWatcher = setInterval(function() {
+    // Check if page framework has finished hydrating
+    // Most frameworks add classes or data attributes after hydration
+    if (document.readyState === 'complete' && !hydrationComplete) {
+      console.log('[Date Replacement] Page load complete, checking for hydration...');
+      
+      // Wait a bit to see if any more changes happen
+      setTimeout(function() {
+        hydrationComplete = true;
+        console.log('[Date Replacement] 🎉 Hydration complete! Showing page...');
+        document.body.classList.add('hydrated');
+        
+        // If we already have the date, apply it now
+        if (lastSuccessfulDate && !isUpdatingDates) {
+          console.log('[Date Replacement] Applying dates immediately after hydration');
+          processDateReplacements(lastSuccessfulDate);
+        }
+      }, 500); // Small delay to catch late hydration
+    }
+  }, 100);
+  
+  // Fallback: show page after 3 seconds no matter what
+  setTimeout(function() {
+    if (!hydrationComplete) {
+      console.log('[Date Replacement] Fallback: Showing page after 3 second timeout');
+      hydrationComplete = true;
+      document.body.classList.add('hydrated');
+      clearInterval(hydrationWatcher);
+    }
+  }, 3000);
   
   function tryExtractAndUpdate() {
     console.log('[Date Replacement] Attempt ' + (41 - attemptsLeft) + '/40 - Looking for WebinarFuel date...');
@@ -1587,16 +1629,16 @@ document.addEventListener('DOMContentLoaded', function() {
     if (rawDate) {
       console.log('[Date Replacement] ✅ Date found! Processing...');
       foundDate = true;
-      lastSuccessfulDate = rawDate; // Store for potential re-application
+      lastSuccessfulDate = rawDate; // Store for application after hydration
       
-      // Wait for framework hydration to complete before showing dates
-      // Hydration typically completes 2-5 seconds after page load
-      // We'll wait 2 seconds to let the framework finish re-rendering
-      console.log('[Date Replacement] Waiting for page hydration to complete...');
-      setTimeout(function() {
-        console.log('[Date Replacement] Hydration should be complete, applying dates now');
+      // If hydration is already complete, apply dates immediately
+      if (hydrationComplete) {
+        console.log('[Date Replacement] Hydration already complete, applying dates now');
         processDateReplacements(rawDate);
-      }, 2000); // Wait 2 seconds for hydration to complete
+      } else {
+        console.log('[Date Replacement] Waiting for hydration to complete before showing dates...');
+        // The hydration watcher will call processDateReplacements when ready
+      }
       
       return; // Stop trying
     }
