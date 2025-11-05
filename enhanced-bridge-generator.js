@@ -431,7 +431,28 @@ document.addEventListener('DOMContentLoaded', function () {
       debug('Attempting to extract webinar date from WebinarFuel');
       
       try {
-        // Strategy 1: Look in window._wf array for schedule data
+        // Strategy 1: Look for date in the WebinarFuel modal (wf_datetime element) - PRIMARY
+        const dateTimeElement = utils.qs('.wf_datetime');
+        if (dateTimeElement && dateTimeElement.textContent) {
+          const dateText = dateTimeElement.textContent.trim();
+          if (dateText) {
+            debug('Found date in wf_datetime element:', dateText);
+            return dateText;
+          }
+        }
+        
+        // Strategy 2: Look for date in dropdown value (alternative location in modal)
+        const dropdownValues = utils.qsa('.wf_dropdown_value');
+        for (let i = 0; i < dropdownValues.length; i++) {
+          const dateText = dropdownValues[i].textContent.trim();
+          // Verify it looks like a date
+          if (dateText && dateText.match(/\d{1,2}:\d{2}|AM|PM|2025|2024|Mon|Tue|Wed|Thu|Fri|Sat|Sun|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/i)) {
+            debug('Found date in wf_dropdown_value:', dateText);
+            return dateText;
+          }
+        }
+        
+        // Strategy 3: Look in window._wf array for schedule data
         if (window._wf && Array.isArray(window._wf)) {
           const config = window._wf.find(c => c.target === targetId);
           if (config && config.schedule) {
@@ -440,7 +461,18 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         }
         
-        // Strategy 2: Look for date in DOM elements within the specific container
+        // Strategy 4: Search all elements with wf_ classes for date patterns
+        const wfElements = utils.qsa('[class*="wf_"]');
+        for (let i = 0; i < wfElements.length; i++) {
+          const text = wfElements[i].textContent.trim();
+          // Look for very specific date format: "Day, Mon DDth YYYY @ H:MM AM/PM TZ"
+          if (text && text.match(/(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*, [A-Z][a-z]+ \d{1,2}[a-z]{2} \d{4} @ \d{1,2}:\d{2} (AM|PM) [A-Z]{3}/i)) {
+            debug('Found date in wf element:', text);
+            return text;
+          }
+        }
+        
+        // Strategy 5: Look for date in DOM elements within the specific container
         const wfContainer = utils.qs('.wf_target_' + targetId);
         if (wfContainer) {
           // Check for date/time elements
@@ -458,7 +490,7 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         }
         
-        // Strategy 3: Look in window.WF object if available
+        // Strategy 6: Look in window.WF object if available
         if (window.WF && typeof window.WF.getSchedule === 'function') {
           const schedule = window.WF.getSchedule(targetId);
           if (schedule) {
@@ -1421,19 +1453,42 @@ document.addEventListener('DOMContentLoaded', function () {
 document.addEventListener('DOMContentLoaded', function() {
   console.log('[Date Replacement] Script loaded and waiting for WebinarFuel...');
   
-  // Give WebinarFuel time to load and populate schedule data
-  setTimeout(function() {
-    console.log('[Date Replacement] Starting date extraction...');
+  var attemptsLeft = 20; // Try up to 20 times (10 seconds)
+  var checkInterval = 500; // Check every 500ms
+  
+  function tryExtractAndUpdate() {
+    console.log('[Date Replacement] Attempt ' + (21 - attemptsLeft) + '/20 - Looking for WebinarFuel date...');
     
-    // Debug: Check what data is available
-    console.log('[Date Replacement] Checking for WebinarFuel data...');
-    console.log('[Date Replacement] window._wf:', window._wf);
-    console.log('[Date Replacement] window.WF:', window.WF);
-    console.log('[Date Replacement] WFBridge:', window.WFBridge);
+    // Check what data is available
+    if (attemptsLeft === 20) {
+      console.log('[Date Replacement] window._wf:', window._wf);
+      console.log('[Date Replacement] window.WF:', window.WF);
+      console.log('[Date Replacement] WFBridge:', window.WFBridge);
+    }
     
     // Try to get the date
     var rawDate = WFBridge.getWebinarDate();
     console.log('[Date Replacement] Raw date from WFBridge.getWebinarDate():', rawDate);
+    
+    if (rawDate) {
+      console.log('[Date Replacement] ✅ Date found! Processing...');
+      processDateReplacements(rawDate);
+      return; // Stop trying
+    }
+    
+    // Decrease attempts and try again
+    attemptsLeft--;
+    if (attemptsLeft > 0) {
+      console.log('[Date Replacement] Date not found yet, will retry in ' + checkInterval + 'ms...');
+      setTimeout(tryExtractAndUpdate, checkInterval);
+    } else {
+      console.warn('[Date Replacement] ❌ Could not find webinar date after 20 attempts');
+      console.warn('[Date Replacement] The date appears in the WebinarFuel modal after clicking the button.');
+      console.warn('[Date Replacement] Date elements will be updated once a user clicks to register.');
+    }
+  }
+  
+  function processDateReplacements(rawDateStr) {
     
     // Helper function to add ordinal suffix (1st, 2nd, 3rd, etc.)
     function getOrdinalSuffix(day) {
@@ -1446,10 +1501,55 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
     
+    // Helper function to parse WebinarFuel date format
+    // Format: "Sat, Nov 8th 2025 @ 3:00 PM AST"
+    function parseWFDate(dateStr) {
+      try {
+        console.log('[Date Replacement] Parsing WebinarFuel date:', dateStr);
+        // Extract date parts from WebinarFuel format
+        var match = dateStr.match(/(\\w+),\\s+(\\w+)\\s+(\\d+)\\w+\\s+(\\d{4})\\s+@\\s+(\\d{1,2}):(\\d{2})\\s+(AM|PM)\\s+(\\w+)/i);
+        if (!match) {
+          console.warn('[Date Replacement] Could not parse date format:', dateStr);
+          console.warn('[Date Replacement] Trying direct Date parse...');
+          // Try to parse it directly
+          var directDate = new Date(dateStr);
+          if (!isNaN(directDate.getTime())) {
+            console.log('[Date Replacement] Direct parse successful');
+            return directDate;
+          }
+          return null;
+        }
+        
+        console.log('[Date Replacement] Regex match found:', match);
+        var month = match[2];
+        var day = parseInt(match[3]);
+        var year = parseInt(match[4]);
+        var hour = parseInt(match[5]);
+        var minute = match[6];
+        var ampm = match[7].toUpperCase();
+        var timezone = match[8];
+        
+        // Convert to 24-hour format
+        if (ampm === 'PM' && hour !== 12) hour += 12;
+        if (ampm === 'AM' && hour === 12) hour = 0;
+        
+        // Create date string
+        var dateString = month + ' ' + day + ', ' + year + ' ' + hour + ':' + minute + ':00';
+        console.log('[Date Replacement] Constructed date string:', dateString);
+        var parsedDate = new Date(dateString);
+        console.log('[Date Replacement] Parsed date object:', parsedDate);
+        return parsedDate;
+      } catch (e) {
+        console.error('[Date Replacement] Error parsing date:', e);
+        return null;
+      }
+    }
+    
     // Helper function to convert time across US timezones
     function formatMultiTimezone(dateStr) {
       try {
-        var date = new Date(dateStr);
+        var date = parseWFDate(dateStr);
+        if (!date) return dateStr;
         
         // Get time in each timezone
         var est = date.toLocaleTimeString('en-US', {
@@ -1495,31 +1595,23 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('[Date Replacement] Found', longDateElements.length, 'elements with .date-long class');
       
       if (WFBridge && typeof WFBridge.updateElementWithDate === 'function') {
-        var success = WFBridge.updateElementWithDate('.date-long', {
-          prefix: '', // Customize: "Join us on ", "Live Training: ", etc.
-          format: function(dateStr) {
+        longDateElements.forEach(function(element) {
+          try {
             // Format: "Saturday November 8th"
-            try {
-              console.log('[Date Replacement] Formatting date-long with:', dateStr);
-              var date = new Date(dateStr);
+            var date = parseWFDate(rawDateStr);
+            if (date) {
               var weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
               var month = date.toLocaleDateString('en-US', { month: 'long' });
               var day = date.getDate();
               var suffix = getOrdinalSuffix(day);
               
-              return weekday + ' ' + month + ' ' + day + suffix;
-            } catch (e) {
-              console.error('[Date Replacement] Error formatting long date:', e);
-              return dateStr;
+              element.textContent = weekday + ' ' + month + ' ' + day + suffix;
+              console.log('[Date Replacement] Successfully updated .date-long element');
             }
+          } catch (e) {
+            console.error('[Date Replacement] Error formatting long date:', e);
           }
         });
-        
-        if (success) {
-          console.log('[Date Replacement] Successfully updated .date-long element');
-        } else {
-          console.warn('[Date Replacement] Failed to update .date-long element - no date data available');
-        }
       } else {
         console.error('[Date Replacement] WFBridge.updateElementWithDate function not found!');
       }
@@ -1532,31 +1624,23 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('[Date Replacement] Found', shortDateElements.length, 'elements with .date-short class');
       
       if (WFBridge && typeof WFBridge.updateElementWithDate === 'function') {
-        var success = WFBridge.updateElementWithDate('.date-short', {
-          prefix: '', // Customize: "Next: ", "Register for ", etc.
-          format: function(dateStr) {
+        shortDateElements.forEach(function(element) {
+          try {
             // Format: "Sat Nov 8th"
-            try {
-              console.log('[Date Replacement] Formatting date-short with:', dateStr);
-              var date = new Date(dateStr);
+            var date = parseWFDate(rawDateStr);
+            if (date) {
               var weekday = date.toLocaleDateString('en-US', { weekday: 'short' });
               var month = date.toLocaleDateString('en-US', { month: 'short' });
               var day = date.getDate();
               var suffix = getOrdinalSuffix(day);
               
-              return weekday + ' ' + month + ' ' + day + suffix;
-            } catch (e) {
-              console.error('[Date Replacement] Error formatting short date:', e);
-              return dateStr;
+              element.textContent = weekday + ' ' + month + ' ' + day + suffix;
+              console.log('[Date Replacement] Successfully updated .date-short element');
             }
+          } catch (e) {
+            console.error('[Date Replacement] Error formatting short date:', e);
           }
         });
-        
-        if (success) {
-          console.log('[Date Replacement] Successfully updated .date-short element');
-        } else {
-          console.warn('[Date Replacement] Failed to update .date-short element - no date data available');
-        }
       } else {
         console.error('[Date Replacement] WFBridge.updateElementWithDate function not found!');
       }
@@ -1568,20 +1652,15 @@ document.addEventListener('DOMContentLoaded', function() {
     if (eventTimeElements.length > 0) {
       console.log('[Date Replacement] Found', eventTimeElements.length, 'elements with .event-time class');
       
-      if (WFBridge && typeof WFBridge.updateElementWithDate === 'function') {
-        var success = WFBridge.updateElementWithDate('.event-time', {
-          prefix: '', // Customize if needed
-          format: formatMultiTimezone
-        });
-        
-        if (success) {
+      eventTimeElements.forEach(function(element) {
+        try {
+          var formatted = formatMultiTimezone(rawDateStr);
+          element.textContent = formatted;
           console.log('[Date Replacement] Successfully updated .event-time element');
-        } else {
-          console.warn('[Date Replacement] Failed to update .event-time element - no date data available');
+        } catch (e) {
+          console.error('[Date Replacement] Error formatting event time:', e);
         }
-      } else {
-        console.error('[Date Replacement] WFBridge.updateElementWithDate function not found!');
-      }
+      });
     }
     
     // Check if any date elements were found
@@ -1589,8 +1668,10 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('[Date Replacement] No elements found with .date-long, .date-short, or .event-time classes');
       console.log('[Date Replacement] Add these classes to elements in your GHL page to enable date replacement');
     }
-    
-  }, 2500); // Wait 2.5 seconds for WebinarFuel to load (adjust if needed)
+  }
+  
+  // Start trying to extract and update
+  setTimeout(tryExtractAndUpdate, 2500); // Wait 2.5 seconds before first attempt
 });
 </script>`;
   }
