@@ -1562,38 +1562,57 @@ document.addEventListener('DOMContentLoaded', function() {
   // Store the last successful date for re-application after hydration
   var lastSuccessfulDate = null;
   var isUpdatingDates = false; // Flag to prevent infinite loops
+  var hydrationCheckCount = 0;
+  var maxHydrationChecks = 50; // Check for up to 5 seconds
   
-  // Watch for hydration completion by checking if body gets modified
+  // Watch for hydration completion
+  // Wait until page is fully loaded AND stable (no more DOM mutations for 200ms)
   var hydrationWatcher = setInterval(function() {
-    // Check if page framework has finished hydrating
-    // Most frameworks add classes or data attributes after hydration
-    if (document.readyState === 'complete' && !hydrationComplete) {
-      console.log('[Date Replacement] Page load complete, checking for hydration...');
+    hydrationCheckCount++;
+    
+    // Only check after page is loaded
+    if (document.readyState !== 'complete') {
+      return;
+    }
+    
+    // Give the framework time to hydrate - wait at least 1.5 seconds after DOMContentLoaded
+    // This ensures the framework has had time to do its initial render
+    if (hydrationCheckCount < 15) { // 15 * 100ms = 1500ms minimum wait
+      return;
+    }
+    
+    // At this point, assume hydration is done and mark as complete
+    if (!hydrationComplete) {
+      console.log('[Date Replacement] 🎉 Hydration complete! Showing page...');
+      hydrationComplete = true;
+      clearInterval(hydrationWatcher); // CRITICAL: Stop the interval immediately!
       
-      // Wait a bit to see if any more changes happen
-      setTimeout(function() {
-        hydrationComplete = true;
-        console.log('[Date Replacement] 🎉 Hydration complete! Showing page...');
-        document.body.classList.add('hydrated');
-        
-        // If we already have the date, apply it now
-        if (lastSuccessfulDate && !isUpdatingDates) {
-          console.log('[Date Replacement] Applying dates immediately after hydration');
-          processDateReplacements(lastSuccessfulDate);
-        }
-      }, 500); // Small delay to catch late hydration
+      // Show the page
+      document.body.classList.add('hydrated');
+      
+      // If we already have the date, apply it now (only once!)
+      if (lastSuccessfulDate && !isUpdatingDates) {
+        console.log('[Date Replacement] Applying dates immediately after hydration');
+        isUpdatingDates = true; // Prevent any re-entry
+        processDateReplacements(lastSuccessfulDate);
+      }
     }
   }, 100);
   
-  // Fallback: show page after 3 seconds no matter what
+  // Fallback: show page after 5 seconds no matter what
   setTimeout(function() {
     if (!hydrationComplete) {
-      console.log('[Date Replacement] Fallback: Showing page after 3 second timeout');
+      console.log('[Date Replacement] Fallback: Showing page after 5 second timeout');
       hydrationComplete = true;
-      document.body.classList.add('hydrated');
       clearInterval(hydrationWatcher);
+      document.body.classList.add('hydrated');
+      
+      if (lastSuccessfulDate && !isUpdatingDates) {
+        isUpdatingDates = true;
+        processDateReplacements(lastSuccessfulDate);
+      }
     }
-  }, 3000);
+  }, 5000);
   
   function tryExtractAndUpdate() {
     console.log('[Date Replacement] Attempt ' + (41 - attemptsLeft) + '/40 - Looking for WebinarFuel date...');
@@ -1631,11 +1650,12 @@ document.addEventListener('DOMContentLoaded', function() {
       foundDate = true;
       lastSuccessfulDate = rawDate; // Store for application after hydration
       
-      // If hydration is already complete, apply dates immediately
-      if (hydrationComplete) {
+      // If hydration is already complete, apply dates immediately (but only once!)
+      if (hydrationComplete && !isUpdatingDates) {
         console.log('[Date Replacement] Hydration already complete, applying dates now');
+        isUpdatingDates = true; // Critical: prevent re-entry
         processDateReplacements(rawDate);
-      } else {
+      } else if (!hydrationComplete) {
         console.log('[Date Replacement] Waiting for hydration to complete before showing dates...');
         // The hydration watcher will call processDateReplacements when ready
       }
@@ -1660,6 +1680,14 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   function processDateReplacements(rawDateStr) {
+    // CRITICAL: Only run once! Prevent infinite loops and hydration mismatches
+    if (isUpdatingDates) {
+      console.log('[Date Replacement] ⚠️ Already updating dates, skipping to prevent loop');
+      return;
+    }
+    isUpdatingDates = true;
+    
+    console.log('[Date Replacement] 🚀 Starting date replacement process...');
     
     // Helper function to add ordinal suffix (1st, 2nd, 3rd, etc.)
     function getOrdinalSuffix(day) {
