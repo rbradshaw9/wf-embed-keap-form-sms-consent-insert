@@ -1549,6 +1549,56 @@ document.addEventListener('DOMContentLoaded', function() {
   var checkInterval = 100; // Check every 100ms (much faster!)
   var foundDate = false;
   
+  // Store the last successful date for re-application after hydration
+  var lastSuccessfulDate = null;
+  
+  // Watch for DOM changes (framework hydration) and re-apply dates
+  function setupHydrationWatcher() {
+    var watchedElements = document.querySelectorAll('.date-long, .date-short, .event-time');
+    if (watchedElements.length === 0) return;
+    
+    console.log('[Date Replacement] Setting up hydration watcher for', watchedElements.length, 'elements');
+    
+    var observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        if (mutation.type === 'childList' || mutation.type === 'characterData') {
+          // Check if any of our date elements were modified
+          var target = mutation.target;
+          
+          // Check if target or its parent has one of our date classes
+          var isDateElement = target.classList && 
+            (target.classList.contains('date-long') || 
+             target.classList.contains('date-short') || 
+             target.classList.contains('event-time'));
+          
+          var parentIsDateElement = target.parentElement && target.parentElement.classList &&
+            (target.parentElement.classList.contains('date-long') || 
+             target.parentElement.classList.contains('date-short') || 
+             target.parentElement.classList.contains('event-time'));
+          
+          if ((isDateElement || parentIsDateElement) && lastSuccessfulDate) {
+            console.log('[Date Replacement] ⚠️ Date element was modified by framework - re-applying date');
+            // Re-apply the date after a short delay to let hydration complete
+            setTimeout(function() {
+              processDateReplacements(lastSuccessfulDate);
+            }, 100);
+          }
+        }
+      });
+    });
+    
+    // Observe each date element for changes
+    watchedElements.forEach(function(element) {
+      observer.observe(element, {
+        childList: true,
+        characterData: true,
+        subtree: true
+      });
+    });
+    
+    console.log('[Date Replacement] Hydration watcher active - will re-apply dates if framework reverts them');
+  }
+  
   function tryExtractAndUpdate() {
     console.log('[Date Replacement] Attempt ' + (41 - attemptsLeft) + '/40 - Looking for WebinarFuel date...');
     
@@ -1583,7 +1633,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (rawDate) {
       console.log('[Date Replacement] ✅ Date found! Processing...');
       foundDate = true;
+      lastSuccessfulDate = rawDate; // Store for re-application
       processDateReplacements(rawDate);
+      setupHydrationWatcher(); // Start watching for framework changes
       return; // Stop trying
     }
     
