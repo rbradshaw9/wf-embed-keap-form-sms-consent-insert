@@ -1525,12 +1525,12 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   /**
-   * Generate date replacement script for GHL pages
+   * Generate HEAD CSS to hide page until dates are ready
+   * This MUST be placed in the page <head> section to prevent flashing
    */
-  generateDateReplacementScript(config) {
-    return `<!-- Dynamic Date Replacement Script -->
-<!-- Add 'date-long', 'date-short', or 'event-time' classes to elements you want updated -->
-<style>
+  generateDateHidePageCSS() {
+    return `<!-- CRITICAL: Place this in HEAD section to prevent page flash -->
+<style id="wf-date-page-hide">
   /* Hide entire page until dates are ready - prevents placeholder text from showing */
   body {
     opacity: 0 !important;
@@ -1548,7 +1548,16 @@ document.addEventListener('DOMContentLoaded', function () {
   .date-long.loaded, .date-short.loaded, .event-time.loaded {
     opacity: 1;
   }
-</style>
+</style>`;
+  }
+
+  /**
+   * Generate date replacement script for GHL pages
+   */
+  generateDateReplacementScript(config) {
+    return `<!-- Dynamic Date Replacement Script -->
+<!-- Add 'date-long', 'date-short', or 'event-time' classes to elements you want updated -->
+<!-- NOTE: Make sure to add the HEAD CSS (see generated output) to prevent page flash -->
 <script>
 // Wait for bridge to initialize and WebinarFuel to load
 document.addEventListener('DOMContentLoaded', function() {
@@ -1971,11 +1980,15 @@ ${bridgeScript}
 
     // Generate the date replacement script
     const dateReplacementScript = this.generateDateReplacementScript(config);
+    
+    // Generate the Custom CSS for hiding page until dates are ready
+    const dateCustomCSS = this.generateDateHidePageCSS();
 
     return {
       webinarFuelEmbed: cleanWfCode,
       keapFormWithScript: keapFormWithScript,
-      dateReplacementScript: dateReplacementScript
+      dateReplacementScript: dateReplacementScript,
+      dateCustomCSS: dateCustomCSS
     };
   }
 }
