@@ -1589,7 +1589,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Watch for DOM mutations to stop (framework finished hydrating)
   var mutationCount = 0;
   var lastMutationTime = Date.now();
-  var stableWaitTime = 800; // Wait for 800ms of no mutations (balance between speed and safety)
+  var stableWaitTime = 2000; // Wait for 2 seconds of no mutations (GHL hydration can take time)
   
   var observer = new MutationObserver(function(mutations) {
     // Framework is still making changes
@@ -1628,13 +1628,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
   
-  // Fallback: apply dates after 4 seconds no matter what
+  // Fallback: apply dates after 6 seconds no matter what (ensure hydration is complete)
   setTimeout(function() {
-    console.log('[Date Replacement] ⏰ Fallback timeout - applying dates after 4 seconds');
+    console.log('[Date Replacement] ⏰ Fallback timeout - applying dates after 6 seconds');
     if (lastSuccessfulDate && !isUpdatingDates) {
       processDateReplacements(lastSuccessfulDate);
     }
-  }, 4000);
+  }, 6000);
   
   function tryExtractAndUpdate() {
     console.log('[Date Replacement] Attempt ' + (41 - attemptsLeft) + '/40 - Looking for WebinarFuel date...');
