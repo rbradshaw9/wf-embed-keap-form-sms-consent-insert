@@ -1028,24 +1028,47 @@ document.addEventListener('DOMContentLoaded', function () {
         console.warn('[WF Bridge] Could not find Keap form for tracking field injection');
       }
       
-      // Set existing fields AND create missing critical tracking fields
-      Object.keys(allTrackingData).forEach(fieldName => {
-        const value = allTrackingData[fieldName];
-        
-        // Try to set the field if it exists
-        const fieldExists = utils.setHiddenField(fieldName, value || 'null');
-        
-        // If field doesn't exist but we have data and a form, create it dynamically
-        if (!fieldExists && value && form) {
-          debug('Creating missing tracking field:', fieldName, '=', value);
-          const hiddenInput = document.createElement('input');
-          hiddenInput.type = 'hidden';
-          hiddenInput.name = fieldName;
-          hiddenInput.value = value;
-          form.appendChild(hiddenInput);
-          debug('✅ Created and populated', fieldName);
-        }
-      });
+      // Function to set/update all tracking fields
+      const setAllTrackingFields = () => {
+        debug('Setting tracking fields...');
+        Object.keys(allTrackingData).forEach(fieldName => {
+          const value = allTrackingData[fieldName];
+          
+          // Try to set the field if it exists
+          const fieldExists = utils.setHiddenField(fieldName, value || 'null');
+          
+          // If field doesn't exist but we have data and a form, create it dynamically
+          if (!fieldExists && value && form) {
+            debug('Creating missing tracking field:', fieldName, '=', value);
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = fieldName;
+            hiddenInput.value = value;
+            form.appendChild(hiddenInput);
+            debug('✅ Created and populated', fieldName);
+          }
+        });
+      };
+      
+      // Set fields initially
+      setAllTrackingFields();
+      
+      // CRITICAL: Re-set fields right before form submission
+      // This prevents Keap's overwriteRefererJs from resetting our values
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          debug('🔒 Form submitting - ensuring tracking fields are set...');
+          setAllTrackingFields(); // Set them again right before submit
+          
+          // Log final values for debugging
+          Object.keys(allTrackingData).forEach(fieldName => {
+            const field = utils.qs(\`input[name="\${fieldName}"]\`);
+            if (field) {
+              debug('Final value of', fieldName, '=', field.value);
+            }
+          });
+        }, true); // Use capture phase to run before other handlers
+      }
       
       debug('Available custom fields in form:', existingFields);
       debug('Populated tracking fields:', Object.keys(allTrackingData).length);
