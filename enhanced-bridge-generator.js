@@ -1020,20 +1020,35 @@ document.addEventListener('DOMContentLoaded', function () {
         'inf_custom_Timestamp': trackingData.timestamp
       };
 
-      // Only set fields that actually exist in the Keap form
+      // Populate tracking fields - create them if they don't exist
       const existingFields = ${JSON.stringify(config.existingCustomFields || [])};
-      existingFields.forEach(fieldName => {
+      const form = utils.qs('form[action*="infusionsoft.com"], form[action*="keap.com"]');
+      
+      if (!form) {
+        console.warn('[WF Bridge] Could not find Keap form for tracking field injection');
+      }
+      
+      // Set existing fields AND create missing critical tracking fields
+      Object.keys(allTrackingData).forEach(fieldName => {
         const value = allTrackingData[fieldName];
-        if (value !== undefined) {
-          utils.setHiddenField(fieldName, value || 'null');
-        } else {
-          debug('No tracking data for field:', fieldName);
-          utils.setHiddenField(fieldName, 'null');
+        
+        // Try to set the field if it exists
+        const fieldExists = utils.setHiddenField(fieldName, value || 'null');
+        
+        // If field doesn't exist but we have data and a form, create it dynamically
+        if (!fieldExists && value && form) {
+          debug('Creating missing tracking field:', fieldName, '=', value);
+          const hiddenInput = document.createElement('input');
+          hiddenInput.type = 'hidden';
+          hiddenInput.name = fieldName;
+          hiddenInput.value = value;
+          form.appendChild(hiddenInput);
+          debug('✅ Created and populated', fieldName);
         }
       });
       
       debug('Available custom fields in form:', existingFields);
-      debug('Populated tracking fields:', existingFields.length);
+      debug('Populated tracking fields:', Object.keys(allTrackingData).length);
 
       // Enhanced submission tracking
       let submitted = false;
