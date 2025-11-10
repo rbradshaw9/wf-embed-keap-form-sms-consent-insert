@@ -632,21 +632,57 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   };
 
-  // ========== ENHANCED UTM AND TRACKING CAPTURE ==========
-  const trackingData = {
-    // UTM parameters
-    utm_source: utils.getUrlParam('utm_source'),
-    utm_medium: utils.getUrlParam('utm_medium'),
-    utm_campaign: utils.getUrlParam('utm_campaign'),
-    utm_term: utils.getUrlParam('utm_term'),
-    utm_content: utils.getUrlParam('utm_content'),
-    utm_id: utils.getUrlParam('utm_id'),
+  // ========== ENHANCED UTM AND TRACKING CAPTURE WITH PERSISTENCE ==========
+  // Helper: Get URL param or fallback to stored value in localStorage
+  function getTrackingParam(key, urlValue) {
+    const storageKey = 'wf_tracking_' + key;
     
-    // Click IDs
-    fbclid: utils.getUrlParam('fbclid'),
-    gclid: utils.getUrlParam('gclid'),
-    msclkid: utils.getUrlParam('msclkid'),
-    ttclid: utils.getUrlParam('ttclid'),
+    // If URL has the param, store it and use it
+    if (urlValue) {
+      try {
+        localStorage.setItem(storageKey, urlValue);
+        localStorage.setItem(storageKey + '_timestamp', Date.now().toString());
+      } catch (e) {
+        console.warn('[WF Bridge] Could not store tracking param:', key);
+      }
+      return urlValue;
+    }
+    
+    // If URL doesn't have it, check localStorage (valid for 30 days)
+    try {
+      const stored = localStorage.getItem(storageKey);
+      const storedTime = localStorage.getItem(storageKey + '_timestamp');
+      
+      if (stored && storedTime) {
+        const age = Date.now() - parseInt(storedTime);
+        const maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+        
+        if (age < maxAge) {
+          debug('Using stored ' + key + ':', stored, '(age: ' + Math.floor(age / (1000 * 60 * 60)) + 'h)');
+          return stored;
+        }
+      }
+    } catch (e) {
+      console.warn('[WF Bridge] Could not read stored tracking param:', key);
+    }
+    
+    return null;
+  }
+
+  const trackingData = {
+    // UTM parameters with localStorage fallback
+    utm_source: getTrackingParam('utm_source', utils.getUrlParam('utm_source')),
+    utm_medium: getTrackingParam('utm_medium', utils.getUrlParam('utm_medium')),
+    utm_campaign: getTrackingParam('utm_campaign', utils.getUrlParam('utm_campaign')),
+    utm_term: getTrackingParam('utm_term', utils.getUrlParam('utm_term')),
+    utm_content: getTrackingParam('utm_content', utils.getUrlParam('utm_content')),
+    utm_id: getTrackingParam('utm_id', utils.getUrlParam('utm_id')),
+    
+    // Click IDs with localStorage fallback (especially important for Facebook)
+    fbclid: getTrackingParam('fbclid', utils.getUrlParam('fbclid')),
+    gclid: getTrackingParam('gclid', utils.getUrlParam('gclid')),
+    msclkid: getTrackingParam('msclkid', utils.getUrlParam('msclkid')),
+    ttclid: getTrackingParam('ttclid', utils.getUrlParam('ttclid')),
     
     // WebinarFuel tracking
     _wf_cid: utils.getUrlParam('_wf_cid'),
@@ -661,7 +697,8 @@ document.addEventListener('DOMContentLoaded', function () {
     pageUrl: window.location.href
   };
 
-  debug('Tracking data captured:', trackingData);
+  debug('Tracking data captured (with localStorage fallback):', trackingData);
+  debug('Current URL:', window.location.href);
 
   // ========== ENHANCED SMS CONSENT INJECTION ==========
   function injectSMSConsent(button) {
